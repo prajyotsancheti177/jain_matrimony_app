@@ -44,12 +44,16 @@ export default function About() {
   }, []);
 
   const openDate = () => {
+    // Start from the saved date: it can arrive after mount (prefilled from the account).
+    const start = o.dob ? new Date(o.dob) : draft;
+    setDraft(start);
     if (isAndroid) {
       DateTimePickerAndroid.open({
-        value: draft,
+        value: start,
         mode: 'date',
-        design: 'material',
-        title: 'Select date',
+        // The Material 3 picker (design: 'material') needs a Material app theme in the
+        // native project; with Expo's default AppCompat theme it crashes on open.
+        // The default design is Android's own calendar dialog, which needs no theme change.
         maximumDate: maxDob(),
         onValueChange: (_e, d) => {
           setDraft(d);
