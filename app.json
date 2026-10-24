@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "SoulSync",
+    "slug": "soulsync",
+    "scheme": "soulsync",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.soulsync.app",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Choose photos for your profile or an ID document for verification."
+      }
+    },
+    "android": {
+      "package": "com.soulsync.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0E6E78",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160,
+          "backgroundColor": "#0E6E78"
+        }
+      ],
+      "expo-image",
+      "@react-native-community/datetimepicker",
+      "expo-secure-store",
+      "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose photos for your profile or an ID document for verification."
+        }
+      ],
+      "expo-asset"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
