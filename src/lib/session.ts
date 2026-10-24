@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { api, setSignedOutHandler } from '../api';
 import { loadTokens } from '../api/tokens';
+import { clearSyncedToken, syncFcmToken } from '../services/notificationService';
 import { clearQueries } from './query';
 import { useSession } from './stores';
 
@@ -13,15 +14,18 @@ export async function bootstrapSession() {
   try {
     const me = await api.getMe();
     set({ status: me.gender && me.dob ? 'signedIn' : 'onboarding' });
+    syncFcmToken().catch(() => {});
   } catch {
     // Offline or server down: keep the session; screens show their own errors and retry.
     set({ status: 'signedIn' });
+    syncFcmToken().catch(() => {});
   }
 }
 
 export async function signOut(callApi = true) {
   if (callApi) await api.logout();
   clearQueries();
+  clearSyncedToken();
   set({ status: 'signedOut' });
   router.replace('/welcome');
 }

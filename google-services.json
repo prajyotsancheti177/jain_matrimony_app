@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "573273030057",
+    "project_id": "jain-matrimony-9bcba",
+    "storage_bucket": "jain-matrimony-9bcba.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:573273030057:android:bc1cf8109bb69405f318b8",
+        "android_client_info": {
+          "package_name": "com.soulsync.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCSn2eD3v1xNb_s9_K-Hhl9DrKcbFEmo-w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

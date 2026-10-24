@@ -125,6 +125,7 @@ export interface Api {
   sendOtp(phone: string): Promise<void>;
   verifyOtp(phone: string, otp: string): Promise<AuthResult>;
   logout(): Promise<void>;
+  updateFcmToken(fcmToken: string): Promise<void>;
 
   getMe(): Promise<Me>;
   updateMe(patch: Partial<Pick<Me, 'name' | 'dob' | 'gender' | 'marital' | 'sect' | 'subSect' | 'diet' | 'photosLocked' | 'photos'>>): Promise<Me>;

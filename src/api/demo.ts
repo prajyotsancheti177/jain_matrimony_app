@@ -100,6 +100,7 @@ export class DemoApi implements Api {
     return { isNewUser: true, isProfileComplete: false };
   }
   async logout() { await wait(100); }
+  async updateFcmToken(_fcmToken: string) { await wait(50); }
 
   async getMe() { await wait(100); return { ...this.me, age: ageFrom(this.me.dob) }; }
   async updateMe(p: Parameters<Api['updateMe']>[0]) { await wait(); this.me = { ...this.me, ...p }; return this.getMe(); }

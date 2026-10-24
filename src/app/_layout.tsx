@@ -6,6 +6,7 @@ import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ToastHost } from '../components/Overlays';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import { bootstrapSession } from '../lib/session';
 import { useSession } from '../lib/stores';
 import { FONT_ASSETS } from '../theme/fonts';
@@ -17,6 +18,8 @@ export default function RootLayout() {
   const t = useTheme();
   const [fontsLoaded, fontError] = useFonts(FONT_ASSETS);
   const status = useSession((s) => s.status);
+
+  usePushNotifications();
 
   useEffect(() => {
     bootstrapSession();

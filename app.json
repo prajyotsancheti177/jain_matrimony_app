@@ -49,7 +49,9 @@
           "photosPermission": "Choose photos for your profile or an ID document for verification."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging"
     ],
     "experiments": {
       "typedRoutes": false

@@ -11,6 +11,7 @@ import { Icon } from '../components/Icon';
 import { Screen } from '../components/Screen';
 import { D, T } from '../components/Text';
 import { toast, toastError, useSession } from '../lib/stores';
+import { syncFcmToken } from '../services/notificationService';
 import { isAndroid, isIOS, useTheme } from '../theme';
 
 const DEMO_CODE = '482913';
@@ -62,6 +63,7 @@ export default function Otp() {
       const r = await api.verifyOtp(phone, otp);
       const done = !r.isNewUser && r.isProfileComplete;
       useSession.getState().set({ status: done ? 'signedIn' : 'onboarding' });
+      syncFcmToken().catch(() => {});
       router.dismissAll();
       router.replace(done ? '/matches' : '/onboarding/about');
     } catch (e) {

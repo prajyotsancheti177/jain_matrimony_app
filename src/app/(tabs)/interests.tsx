@@ -1,5 +1,5 @@
 // 2k · Interests. iOS: segmented control. Android: tabs.
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { api, type PhotoRequest, type ReceivedInterest, type SentInterest } from '../../api';
@@ -15,7 +15,11 @@ const SEGS = ['Received', 'Sent', 'Photos'] as const;
 type Seg = (typeof SEGS)[number];
 
 export default function Interests() {
-  const [seg, setSeg] = useState<Seg>('Received');
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
+  const [userSeg, setUserSeg] = useState<{ forTab?: string; seg: Seg } | null>(null);
+  const routeSeg: Seg = tab && (SEGS as readonly string[]).includes(tab) ? (tab as Seg) : 'Received';
+  const seg: Seg = userSeg && userSeg.forTab === tab ? userSeg.seg : routeSeg;
+  const setSeg = (s: Seg) => setUserSeg({ forTab: tab, seg: s });
   const received = useQuery('interests:received', () => api.receivedInterests());
   const sent = useQuery('interests:sent', () => api.sentInterests());
   const photos = useQuery('interests:photos', () => api.photoRequests());

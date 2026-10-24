@@ -257,6 +257,9 @@ export class HttpApi implements Api {
     this.socket = null;
     await saveTokens(null);
   }
+  async updateFcmToken(fcmToken: string): Promise<void> {
+    await this.req<void>('PUT', '/users/fcm-token', { fcmToken });
+  }
 
   // --- Me ---
   async getMe() {
