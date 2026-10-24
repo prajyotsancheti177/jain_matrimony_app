@@ -108,13 +108,24 @@ export async function requestNotificationPermission(): Promise<boolean> {
  * Prevents redundant calls if already synced in the current session.
  */
 export async function syncFcmToken(explicitToken?: string): Promise<boolean> {
+  if (!isFirebaseNativeAvailable()) {
+    console.log(
+      '[FCM] Native Firebase module is not available in this build (running in Expo Go). FCM token sync requires a development build.'
+    );
+    return false;
+  }
+
   const mod = getFirebaseMessagingModule();
   const messagingInstance = getMessagingSafe();
-  if (!mod || !messagingInstance) return false;
+  if (!mod || !messagingInstance) {
+    console.log('[FCM] Firebase messaging module could not be loaded.');
+    return false;
+  }
 
   // Only sync if user is authenticated with a valid JWT
   const tokens = await loadTokens();
   if (!tokens?.accessToken) {
+    console.log('[FCM] User is not authenticated (no access token). Skipping FCM sync.');
     return false;
   }
 
@@ -124,25 +135,31 @@ export async function syncFcmToken(explicitToken?: string): Promise<boolean> {
   try {
     let token = explicitToken;
     if (!token) {
-      const hasPermission = await requestNotificationPermission();
-      if (!hasPermission) {
-        return false;
-      }
+      await requestNotificationPermission().catch((err) => {
+        console.warn('[FCM] Permission request failed:', err);
+      });
+      console.log('[FCM] Fetching device FCM token from Firebase...');
       token = await mod.getToken(messagingInstance);
     }
 
-    if (!token) return false;
+    if (!token) {
+      console.warn('[FCM] No FCM token returned from Firebase.');
+      return false;
+    }
 
     // Prevent duplicate sync if identical token was already sent in this session
     if (token === lastSyncedToken) {
+      console.log('[FCM] FCM token already synced for this session.');
       return true;
     }
 
+    console.log('[FCM] Syncing FCM token to backend: PUT /users/fcm-token');
     await api.updateFcmToken(token);
     lastSyncedToken = token;
+    console.log('[FCM] Successfully synced FCM token to backend!');
     return true;
   } catch (err) {
-    console.warn('[FCM] Token sync error:', err);
+    console.error('[FCM] Token sync error:', err);
     // Do not set lastSyncedToken so future retries can succeed
     return false;
   } finally {

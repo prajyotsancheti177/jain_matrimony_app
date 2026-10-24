@@ -181,7 +181,7 @@ export class HttpApi implements Api {
   private myCity: string | null = null;
 
   constructor(private base: string) {
-    this.base = base.replace(/\/$/, '');
+    this.base = base.trim().replace(/\/+$/, '');
   }
 
   private async meId() {

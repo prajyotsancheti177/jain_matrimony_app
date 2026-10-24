@@ -63,7 +63,7 @@ export default function Otp() {
       const r = await api.verifyOtp(phone, otp);
       const done = !r.isNewUser && r.isProfileComplete;
       useSession.getState().set({ status: done ? 'signedIn' : 'onboarding' });
-      syncFcmToken().catch(() => {});
+      await syncFcmToken().catch((e) => console.warn('[FCM] OTP sync failed:', e));
       router.dismissAll();
       router.replace(done ? '/matches' : '/onboarding/about');
     } catch (e) {
