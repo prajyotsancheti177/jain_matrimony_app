@@ -2,6 +2,7 @@
 // Converts backend entities into the app models in ./types.
 
 import { io, type Socket } from 'socket.io-client';
+import { File as ExpoFile } from 'expo-file-system';
 import * as E from './enums';
 import { ageFrom, ago, firstName, heightLabel, initials, shortTime } from './format';
 import { loadTokens, saveTokens, userIdFromToken, type Tokens } from './tokens';
@@ -285,8 +286,9 @@ export class HttpApi implements Api {
       contentType: file.mimeType,
       fileName: file.name,
     });
-    const blob = await (await fetch(file.uri)).blob();
-    const put = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.mimeType }, body: blob }).catch(() => null);
+    const body = await new ExpoFile(file.uri).arrayBuffer();
+    if (body.byteLength === 0) throw new ApiError(0, 'Selected file is empty. Please choose another file.');
+    const put = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.mimeType }, body }).catch(() => null);
     if (!put?.ok) throw new ApiError(put?.status ?? 0, 'Upload failed. Try again.');
     return fileUrl;
   }
