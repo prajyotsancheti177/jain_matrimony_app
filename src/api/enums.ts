@@ -43,8 +43,8 @@ export const SubSect = twoWay([
   ['Agrawal', 'Agrawal'],
   ['No bar', 'Unspecified / No Bar'],
 ]);
-/** The preferences screen shows a shorter sub-sect list. */
-export const PREF_SUBSECTS = ['Oswal', 'Visa Oswal', 'Dasa Oswal', 'Shrimal', 'Visa Shrimal', 'Porwal', 'No bar'];
+/** Preferences offer every sub-sect the backend knows. */
+export const PREF_SUBSECTS = SubSect.labels;
 
 export const Diet = twoWay([
   ['Strict Jain', 'Strict Jain (No Root Vegetables)'],
@@ -83,6 +83,47 @@ export const Family = twoWay([
 ]);
 
 export const PREF_CITIES = ['Ahmedabad', 'Mumbai', 'Surat', 'Pune', 'Jaipur', 'Bengaluru'];
+export const PREF_STATES = ['Gujarat', 'Maharashtra', 'Rajasthan', 'Karnataka', 'Madhya Pradesh', 'Delhi', 'Tamil Nadu', 'West Bengal'];
+
+/** Your own income on the profile (includes "Not working" and "Under ₹5L", which preferences leave out). */
+export const IncomeAll = twoWay([
+  ['Not working', 'Not Working / Homemaker / Student'],
+  ['Under ₹5L', 'Under 5 LPA'],
+  ['₹5–10L', '5 - 10 LPA'],
+  ['₹10–20L', '10 - 20 LPA'],
+  ['₹20–35L', '20 - 35 LPA'],
+  ['₹35–50L', '35 - 50 LPA'],
+  ['₹50L+', '50+ LPA'],
+]);
+
+export const Education = twoWay([
+  ['Diploma', 'High School / Diploma'],
+  ['Bachelors', 'Bachelors (B.Com / B.Tech / BA / BBA / B.Sc)'],
+  ['Masters', 'Masters (MBA / M.Tech / M.Com / MS)'],
+  ['CA / CS / CFA', 'CA / CS / CFA / ICWA'],
+  ['Medical', 'Medical (MBBS / MD / BDS / MDS / BAMS)'],
+  ['Law', 'Law (LLB / LLM)'],
+  ['PhD', 'Doctorate / PhD'],
+  ['Other', 'Other'],
+]);
+
+export const Occupation = twoWay([
+  ['Business', 'Business / Family Business / Entrepreneur'],
+  ['CA / Finance', 'Chartered Accountant / Finance / Investment Banking'],
+  ['Engineer / IT', 'Software Engineer / IT Professional'],
+  ['Doctor', 'Doctor / Healthcare Professional'],
+  ['Corporate', 'Corporate / Management / Consultant'],
+  ['Lawyer', 'Lawyer / Legal Professional'],
+  ['Government', 'Government / Civil Services'],
+  ['Designer', 'Architect / Interior / Fashion Designer'],
+  ['Homemaker', 'Homemaker / Not Working'],
+  ['Student', 'Student'],
+  ['Other', 'Other'],
+]);
+
+/** One-tap suggestions for the language and hobby lists on Edit profile. */
+export const LANGUAGE_SUGGESTIONS = ['Gujarati', 'Hindi', 'English', 'Marwari', 'Marathi', 'Kannada'];
+export const HOBBY_SUGGESTIONS = ['Travel', 'Reading', 'Yoga', 'Cooking', 'Music', 'Pathshala', 'Garba', 'Treks'];
 
 export const ReportReason = twoWay([
   ['Fake profile', 'Fake / Misleading Profile'],

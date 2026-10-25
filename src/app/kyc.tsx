@@ -85,7 +85,9 @@ export default function Kyc() {
       ) : (
         <View>
           <T style={{ fontSize: 15.5, lineHeight: 23, color: t.mut, marginBottom: 20 }}>
-            {status === 'Rejected' ? "We couldn't verify your last document. Please try again with a clear photo." : 'Verified profiles get a badge and show up higher in matches.'}
+            {status === 'Rejected'
+              ? `We couldn't verify your last document${q.data.reason ? `: ${q.data.reason.replace(/\.$/, '')}.` : '.'} Please try again with a clear photo.`
+              : 'Verified profiles get a badge and show up higher in matches.'}
           </T>
           <View style={{ backgroundColor: t.grpBg, borderRadius: t.grpR, paddingHorizontal: t.grpPx, marginBottom: 20 }}>
             {KycDoc.labels.map((o, i) => (

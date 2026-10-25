@@ -9,7 +9,7 @@ const ICONS = [
   'verified', 'verified_user', 'favorite', 'schedule', 'photo_library', 'forum', 'person', 'local_florist',
   'format_quote', 'flag', 'block', 'notifications', 'download', 'download_done', 'delete', 'badge',
   'travel_explore', 'credit_card', 'how_to_vote', 'upload_file', 'task', 'shield_lock', 'hourglass_top',
-  'add_a_photo', 'send', 'family_restroom', 'palette', 'logout', 'error',
+  'add_a_photo', 'send', 'family_restroom', 'palette', 'logout', 'error', 'edit', 'person_off',
 ];
 const pathOf = (file) => {
   const svg = readFileSync(file, 'utf8');

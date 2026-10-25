@@ -3,10 +3,11 @@
 
 import { io, type Socket } from 'socket.io-client';
 import { File as ExpoFile } from 'expo-file-system';
+import { completeness } from './completeness';
 import * as E from './enums';
 import { ageFrom, ago, firstName, heightLabel, initials, shortTime } from './format';
 import { loadTokens, saveTokens, userIdFromToken, type Tokens } from './tokens';
-import type { Api, Conversation, LocalFile, Me, Message, PersonSummary, Prefs, Profile, Score } from './types';
+import type { Api, BlockedPerson, Conversation, LocalFile, Me, Message, PersonSummary, Prefs, Profile, ProfileForm, Score, SentPhotoRequest } from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -29,6 +30,8 @@ type BUser = {
   fullName: string;
   phoneNumber?: string;
   dateOfBirth?: string | null;
+  /** The matches feed returns age instead of dateOfBirth. */
+  age?: number | null;
   gender?: string | null;
   maritalStatus?: string | null;
   sect?: string | null;
@@ -36,6 +39,7 @@ type BUser = {
   diet?: string | null;
   highestEducation?: string | null;
   occupation?: string | null;
+  organizationName?: string | null;
   annualIncome?: string | null;
   familyType?: string | null;
   city?: string | null;
@@ -48,6 +52,7 @@ type BUser = {
   isVerified?: boolean;
   kycStatus?: Me['kycStatus'];
   kycDocumentType?: string | null;
+  kycRejectionReason?: string | null;
   profileDetails?: BDetails | null;
   compatibility?: BScore;
 };
@@ -89,15 +94,21 @@ function toScore(c: BScore): Score {
   };
 }
 
-function summary(u: BUser, canSeePhoto = !u.isPhotosLocked): PersonSummary {
+/** The default photo, unless it's the backend's placeholder. Everyone may see it. */
+function publicPhoto(u: BUser): string | null {
+  const p = u.defaultPhotoUrl;
+  return p && !p.includes('placeholder-avatar') ? p : null;
+}
+
+/** Extra photos: the gallery minus the default photo (older accounts have the default inside the gallery). */
+function extraPhotos(u: BUser): string[] {
+  const d = u.defaultPhotoUrl;
+  return (u.photoUrls ?? []).filter((p) => p && p !== d);
+}
+
+function summary(u: BUser): PersonSummary {
   const name = u.fullName || 'Member';
-  return {
-    id: u.id,
-    name,
-    first: firstName(name),
-    initials: initials(name),
-    photo: canSeePhoto ? (u.photoUrls?.[0] ?? (u.defaultPhotoUrl || null)) : null,
-  };
+  return { id: u.id, name, first: firstName(name), initials: initials(name), photo: publicPhoto(u) };
 }
 
 function siblings(d: BDetails) {
@@ -115,11 +126,13 @@ function siblings(d: BDetails) {
 const withJob = (name?: string | null, job?: string | null) => [name, job].filter(Boolean).join(', ');
 
 function toProfile(u: BUser): Profile {
-  const canSee = !u.isPhotosLocked || !!u.isPhotoAccessGranted || (u.photoUrls?.length ?? 0) > 0;
+  // The backend only sends the gallery when the viewer may see it.
+  const extra = extraPhotos(u);
+  const canSee = !u.isPhotosLocked || !!u.isPhotoAccessGranted || extra.length > 0;
   const d = u.profileDetails ?? undefined;
   return {
-    ...summary(u, canSee),
-    age: ageFrom(u.dateOfBirth),
+    ...summary(u),
+    age: u.age ?? ageFrom(u.dateOfBirth),
     height: heightLabel(d?.heightCm),
     city: [u.city, u.state].filter(Boolean).join(', '),
     cityShort: u.city ?? '',
@@ -133,7 +146,7 @@ function toProfile(u: BUser): Profile {
     marital: E.Marital.label(u.maritalStatus),
     family: E.Family.label(u.familyType),
     verified: !!u.isVerified,
-    photos: canSee ? (u.photoUrls ?? []) : [],
+    photos: canSee ? extra : [],
     photosLocked: !canSee,
     photoRequest: u.photoRequestStatus ?? null,
     score: u.compatibility ? toScore(u.compatibility) : undefined,
@@ -153,8 +166,43 @@ function toProfile(u: BUser): Profile {
   };
 }
 
+function toForm(u: BUser): ProfileForm {
+  const d = u.profileDetails ?? {};
+  return {
+    name: u.fullName ?? '',
+    dob: u.dateOfBirth ? String(u.dateOfBirth).slice(0, 10) : null,
+    marital: E.Marital.label(u.maritalStatus),
+    city: u.city ?? '',
+    state: u.state ?? '',
+    sect: E.Sect.label(u.sect),
+    subSect: E.SubSect.label(u.subSect),
+    diet: E.Diet.label(u.diet),
+    education: E.Education.label(u.highestEducation),
+    occupation: E.Occupation.label(u.occupation),
+    organization: u.organizationName ?? '',
+    income: E.IncomeAll.label(u.annualIncome),
+    family: E.Family.label(u.familyType),
+    bio: d.bio ?? '',
+    hobbies: d.hobbies ?? [],
+    heightCm: d.heightCm ?? null,
+    languages: d.languagesKnown ?? [],
+    gotra: d.gotra ?? '',
+    native: d.nativePlace ?? '',
+    mosal: d.mosal ?? '',
+    fatherName: d.fatherName ?? '',
+    fatherWork: d.fatherOccupation ?? '',
+    motherName: d.motherName ?? '',
+    motherWork: d.motherOccupation ?? '',
+    brothers: d.brothersCount ?? 0,
+    marriedBrothers: d.marriedBrothersCount ?? 0,
+    sisters: d.sistersCount ?? 0,
+    marriedSisters: d.marriedSistersCount ?? 0,
+    tob: d.timeOfBirth ?? '',
+    pob: d.placeOfBirth ?? '',
+  };
+}
+
 function toMe(u: BUser): Me {
-  const fields = [u.fullName, u.dateOfBirth, u.gender, u.maritalStatus, u.sect, u.subSect, u.diet, u.highestEducation, u.occupation, u.city, u.photoUrls?.length, u.profileDetails?.bio];
   return {
     id: u.id,
     name: u.fullName ?? '',
@@ -166,11 +214,12 @@ function toMe(u: BUser): Me {
     sect: E.Sect.label(u.sect),
     subSect: E.SubSect.label(u.subSect),
     diet: E.Diet.label(u.diet),
-    photos: u.photoUrls ?? [],
+    profilePhoto: publicPhoto(u),
+    photos: extraPhotos(u),
     photosLocked: u.isPhotosLocked ?? true,
     kycStatus: u.kycStatus ?? 'Unsubmitted',
     kycDoc: E.KycDoc.label(u.kycDocumentType),
-    completeness: Math.round((fields.filter(Boolean).length / fields.length) * 100),
+    completeness: completeness(toForm(u)).pct,
   };
 }
 
@@ -277,13 +326,12 @@ export class HttpApi implements Api {
     if (p.subSect !== undefined) body.subSect = E.SubSect.value(p.subSect);
     if (p.diet !== undefined) body.diet = E.Diet.value(p.diet);
     if (p.photosLocked !== undefined) body.isPhotosLocked = p.photosLocked;
-    if (p.photos !== undefined) {
-      body.photoUrls = p.photos;
-      if (p.photos[0]) body.defaultPhotoUrl = p.photos[0];
-    }
+    // Extra photos and the default photo are saved separately, so a private photo never becomes the public one.
+    if (p.photos !== undefined) body.photoUrls = p.photos;
+    if (p.profilePhoto !== undefined) body.defaultPhotoUrl = p.profilePhoto;
     return toMe(await this.req<BUser>('PUT', '/users/profile', body));
   }
-  private async upload(file: LocalFile, fileType: 'gallery_photo' | 'kyc_document') {
+  private async upload(file: LocalFile, fileType: 'profile_photo' | 'gallery_photo' | 'kyc_document') {
     const { uploadUrl, fileUrl } = await this.req<{ uploadUrl: string; fileUrl: string }>('POST', '/media/presigned-url', {
       fileType,
       contentType: file.mimeType,
@@ -295,8 +343,53 @@ export class HttpApi implements Api {
     if (!put?.ok) throw new ApiError(put?.status ?? 0, 'Upload failed. Try again.');
     return fileUrl;
   }
-  uploadPhoto(file: LocalFile) {
-    return this.upload(file, 'gallery_photo');
+  uploadPhoto(file: LocalFile, kind: 'profile' | 'extra' = 'extra') {
+    return this.upload(file, kind === 'profile' ? 'profile_photo' : 'gallery_photo');
+  }
+  async getProfileForm(): Promise<ProfileForm> {
+    return toForm(await this.req<BUser>('GET', '/users/profile'));
+  }
+  async saveProfileForm(f: ProfileForm) {
+    // Empty text clears the field on the backend (null), unset choices are left as they are.
+    const text = (v: string) => (v.trim() ? v.trim() : null);
+    // Required choices are never cleared; optional ones send null when cleared.
+    const pick = (v: string | undefined) => v || undefined;
+    const optional = (v: string | undefined) => v || null;
+    await this.req('PUT', '/users/profile', {
+      fullName: f.name.trim(),
+      ...(f.dob ? { dateOfBirth: f.dob } : {}),
+      maritalStatus: pick(E.Marital.value(f.marital)),
+      sect: pick(E.Sect.value(f.sect)),
+      subSect: optional(E.SubSect.value(f.subSect)),
+      diet: pick(E.Diet.value(f.diet)),
+      highestEducation: optional(E.Education.value(f.education)),
+      occupation: optional(E.Occupation.value(f.occupation)),
+      annualIncome: optional(E.IncomeAll.value(f.income)),
+      familyType: optional(E.Family.value(f.family)),
+      organizationName: text(f.organization),
+      city: text(f.city),
+      state: text(f.state),
+    });
+    await this.req('PUT', '/users/profile/details', {
+      bio: text(f.bio),
+      hobbies: f.hobbies,
+      languagesKnown: f.languages,
+      ...(f.heightCm ? { heightCm: f.heightCm } : {}),
+      gotra: text(f.gotra),
+      nativePlace: text(f.native),
+      mosal: text(f.mosal),
+      fatherName: text(f.fatherName),
+      fatherOccupation: text(f.fatherWork),
+      motherName: text(f.motherName),
+      motherOccupation: text(f.motherWork),
+      brothersCount: f.brothers,
+      marriedBrothersCount: Math.min(f.marriedBrothers, f.brothers),
+      sistersCount: f.sisters,
+      marriedSistersCount: Math.min(f.marriedSisters, f.sisters),
+      timeOfBirth: text(f.tob),
+      placeOfBirth: text(f.pob),
+    });
+    return this.getMe();
   }
   exportData() {
     return this.req<unknown>('GET', '/users/profile/export');
@@ -319,6 +412,9 @@ export class HttpApi implements Api {
       minIncome?: string | null;
       preferredFamilyTypes?: string[] | null;
       preferredCities?: string[] | null;
+      preferredEducationLevels?: string[] | null;
+      preferredOccupations?: string[] | null;
+      preferredStates?: string[] | null;
     };
     const p = await this.req<BP>('GET', '/users/preferences').catch((e) => {
       if (e instanceof ApiError && e.status === 404) return {} as BP;
@@ -334,6 +430,9 @@ export class HttpApi implements Api {
       minIncome: p.minIncome ? E.Income.label(p.minIncome) : 'Any',
       family: (p.preferredFamilyTypes ?? []).map(E.Family.label),
       cities: p.preferredCities ?? [],
+      education: (p.preferredEducationLevels ?? []).map(E.Education.label),
+      occupation: (p.preferredOccupations ?? []).map(E.Occupation.label),
+      states: p.preferredStates ?? [],
     };
   }
   async savePrefs(p: Prefs) {
@@ -347,6 +446,9 @@ export class HttpApi implements Api {
       ...(p.minIncome !== 'Any' ? { minIncome: E.Income.value(p.minIncome) } : {}),
       preferredFamilyTypes: p.family.map(E.Family.value),
       preferredCities: p.cities,
+      preferredEducationLevels: p.education.map(E.Education.value).filter(Boolean),
+      preferredOccupations: p.occupation.map(E.Occupation.value).filter(Boolean),
+      preferredStates: p.states,
     });
   }
 
@@ -382,7 +484,7 @@ export class HttpApi implements Api {
     return live.map((r, i) => ({
       id: r.id,
       from: {
-        ...summary(r.sender, r.grantPhotoAccess || !r.sender.isPhotosLocked),
+        ...summary(r.sender),
         age: ageFrom(r.sender.dateOfBirth),
         meta: [E.Sect.label(r.sender.sect), r.sender.city].filter(Boolean).join(' · '),
       },
@@ -397,7 +499,7 @@ export class HttpApi implements Api {
     const list = await this.req<S[]>('GET', '/interests/sent');
     return list.map((r) => ({
       id: r.id,
-      to: summary(r.receiver, false),
+      to: summary(r.receiver),
       when: ago(r.createdAt),
       status: (r.status === 'Pending' ? 'Waiting' : r.status === 'Accepted' ? 'Accepted' : 'Declined') as 'Waiting' | 'Accepted' | 'Declined',
       grant: r.grantPhotoAccess,
@@ -425,9 +527,19 @@ export class HttpApi implements Api {
     const list = await this.req<P[]>('GET', '/users/photo-requests/received');
     return list.map((r) => ({
       id: r.id,
-      from: summary(r.requester, false),
+      from: summary(r.requester),
       when: ago(r.createdAt),
       status: r.status.toLowerCase() as 'pending' | 'approved' | 'declined' | 'revoked',
+    }));
+  }
+  async sentPhotoRequests(): Promise<SentPhotoRequest[]> {
+    type P = { id: string; status: string; createdAt: string; updatedAt?: string; targetUser: BUser };
+    const list = await this.req<P[]>('GET', '/users/photo-requests/sent');
+    return list.map((r) => ({
+      id: r.id,
+      to: summary(r.targetUser),
+      when: ago(r.updatedAt ?? r.createdAt),
+      status: r.status.toLowerCase() as SentPhotoRequest['status'],
     }));
   }
   async respondPhotoRequest(id: string, status: 'approved' | 'declined' | 'revoked') {
@@ -438,11 +550,22 @@ export class HttpApi implements Api {
   async block(id: string) {
     await this.req('POST', `/safety/block/${id}`, {});
   }
-  async report(id: string, reason: string, alsoBlock: boolean) {
-    await this.req('POST', `/safety/report/${id}`, { reason: E.ReportReason.value(reason), alsoBlock });
+  async unblock(id: string) {
+    await this.req('DELETE', `/safety/block/${id}`);
   }
-  async blockedCount() {
-    return (await this.req<unknown[]>('GET', '/safety/blocked')).length;
+  async report(id: string, reason: string, alsoBlock: boolean, description?: string) {
+    await this.req('POST', `/safety/report/${id}`, {
+      reason: E.ReportReason.value(reason),
+      alsoBlock,
+      ...(description?.trim() ? { description: description.trim() } : {}),
+    });
+  }
+  async blockedList(): Promise<BlockedPerson[]> {
+    type B = { id: string; createdAt: string; blockedUser?: BUser | null };
+    const list = await this.req<B[]>('GET', '/safety/blocked');
+    return list
+      .filter((b): b is B & { blockedUser: BUser } => !!b.blockedUser)
+      .map((b) => ({ ...summary(b.blockedUser), since: ago(b.createdAt) }));
   }
 
   // --- Chat ---
@@ -460,7 +583,7 @@ export class HttpApi implements Api {
       const msgs = recent[i]!;
       return {
         id: c.id,
-        other: summary(other, false),
+        other: summary(other),
         last: msgs[0]?.content ?? 'Say Jai Jinendra',
         time: shortTime(c.lastMessageAt ?? c.createdAt),
         unread: msgs.filter((m) => !m.isRead && m.sender?.id !== me).length,
@@ -505,8 +628,8 @@ export class HttpApi implements Api {
 
   // --- KYC ---
   async kyc() {
-    const r = await this.req<{ kycStatus: Me['kycStatus']; kycDocumentType: string | null }>('GET', '/users/profile/kyc');
-    return { status: r.kycStatus, doc: E.KycDoc.label(r.kycDocumentType) };
+    const r = await this.req<{ kycStatus: Me['kycStatus']; kycDocumentType: string | null; kycRejectionReason?: string | null }>('GET', '/users/profile/kyc');
+    return { status: r.kycStatus, doc: E.KycDoc.label(r.kycDocumentType), reason: r.kycRejectionReason ?? undefined };
   }
   async submitKyc(doc: string, file: LocalFile) {
     const url = await this.upload(file, 'kyc_document');

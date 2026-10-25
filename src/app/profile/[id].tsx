@@ -1,19 +1,19 @@
 // 2h · Profile. iOS: inset grouped details and a pinned bottom button. Android: flat list and an extended FAB.
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, type Profile } from '../../api';
 import { Avatar } from '../../components/Controls';
-import { Icon } from '../../components/Icon';
+import { Icon, type IconName } from '../../components/Icon';
 import { InterestSheet } from '../../components/InterestSheet';
 import { useSafety } from '../../components/Safety';
 import { Empty, Screen, SectionTitle, StickyFooter } from '../../components/Screen';
 import { Petals, ScoreTile } from '../../components/Score';
 import { D, T } from '../../components/Text';
-import { setQueryData, useQuery } from '../../lib/query';
+import { invalidate, setQueryData, useQuery } from '../../lib/query';
 import { toast, toastError } from '../../lib/stores';
-import { alpha, isAndroid, isIOS, mix, useTheme } from '../../theme';
+import { isAndroid, isIOS, mix, useTheme } from '../../theme';
 
 export default function ProfileScreen() {
   const t = useTheme();
@@ -21,13 +21,27 @@ export default function ProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const q = useQuery(`profile:${id}`, () => api.profile(id));
   const sent = useQuery('interests:sent', () => api.sentInterests());
+  const received = useQuery('interests:received', () => api.receivedInterests());
+  const chats = useQuery('chats', () => api.conversations());
   const [interest, setInterest] = useState(false);
+  const [accepting, setAccepting] = useState(false);
   const m = q.data;
   const safety = useSafety(m ?? null, () => router.back());
-  const isSent = !!sent.data?.some((s) => s.to.id === id);
+
+  // Where the two of you stand. Once matched, the profile stays reachable and the button opens the chat.
+  const outbound = sent.data?.find((s) => s.to.id === id);
+  const inbound = received.data?.find((r) => r.from.id === id);
+  const chat = chats.data?.find((c) => c.other.id === id && c.active);
+  const matched = !!chat || outbound?.status === 'Accepted' || inbound?.status === 'accepted';
+  const state: 'matched' | 'incoming' | 'sent' | 'declined' | 'none' = matched
+    ? 'matched'
+    : inbound?.status === 'pending' ? 'incoming'
+    : outbound?.status === 'Waiting' ? 'sent'
+    : outbound?.status === 'Declined' || inbound?.status === 'declined' ? 'declined'
+    : 'none';
 
   const header = {
-    back: { label: 'Matches' },
+    back: { label: 'Back' },
     title: isIOS ? '' : (m?.first ?? ''),
     action: { icon: isIOS ? ('more_horiz' as const) : ('more_vert' as const), label: 'More', onPress: safety.open },
   };
@@ -39,6 +53,22 @@ export default function ProfileScreen() {
       </Screen>
     );
   }
+
+  const openChat = () => router.push(chat ? `/chat/${chat.id}` : '/chats');
+  const accept = async () => {
+    if (!inbound) return;
+    setAccepting(true);
+    try {
+      const { conversationId } = await api.respondInterest(inbound.id, true);
+      invalidate('interests', 'chats');
+      toast(`You can now message ${m.first}`, 'lock_open');
+      if (conversationId) router.push(`/chat/${conversationId}`);
+    } catch (e) {
+      toastError(e);
+    } finally {
+      setAccepting(false);
+    }
+  };
 
   const askPhotos = async () => {
     if (m.photoRequest) return;
@@ -61,9 +91,17 @@ export default function ProfileScreen() {
     .map((s) => ({ ...s, rows: s.rows.filter((r): r is [string, string] => !!r[1]) }))
     .filter((s) => s.rows.length);
 
-  const ctaIcon = isSent ? 'schedule' : 'favorite';
-  const ctaLabel = isSent ? 'Interest sent' : 'Send interest';
-  const openInterest = () => !isSent && setInterest(true);
+  const cta: { icon: IconName; label: string; quiet: boolean; onPress?: () => void } = {
+    matched: { icon: 'forum' as IconName, label: `Message ${m.first}`, quiet: false, onPress: openChat },
+    incoming: { icon: 'favorite' as IconName, label: accepting ? 'Accepting…' : 'Accept interest', quiet: false, onPress: accepting ? undefined : accept },
+    sent: { icon: 'schedule' as IconName, label: 'Interest sent', quiet: true },
+    declined: { icon: 'block' as IconName, label: 'Not available', quiet: true },
+    none: { icon: 'favorite' as IconName, label: 'Send interest', quiet: false, onPress: () => setInterest(true) },
+  }[state];
+  const isSent = cta.quiet;
+  const ctaIcon = cta.icon;
+  const ctaLabel = cta.label;
+  const openInterest = () => cta.onPress?.();
 
   return (
     <Screen
@@ -91,23 +129,9 @@ export default function ProfileScreen() {
       {/* Hero: shared photo, or initials with a request button */}
       <View style={{ height: 220, marginHorizontal: 16, borderRadius: 28, overflow: 'hidden', backgroundImage: t.aura(), alignItems: 'center', justifyContent: 'center', gap: 14 }}>
         {m.photo ? (
-          <>
-            <Image source={{ uri: m.photo }} style={{ position: 'absolute', inset: 0 }} resizeMode="cover" />
-            <View style={{ position: 'absolute', left: 14, bottom: 14, flexDirection: 'row', alignItems: 'center', gap: 6, height: 30, paddingHorizontal: 12, borderRadius: 15, backgroundColor: alpha(t.s, 0.88) }}>
-              <Icon name="lock_open" size={16} color={t.ink} />
-              <T style={{ fontSize: 13, fontWeight: '500' }}>Shared with you</T>
-            </View>
-          </>
+          <Image source={{ uri: m.photo }} style={{ position: 'absolute', inset: 0 }} resizeMode="cover" accessibilityLabel={`${m.name}'s profile photo`} />
         ) : (
-          <>
-            <Avatar size={112} initials={m.initials} onSurface />
-            {m.photosLocked && (
-              <Pressable onPress={askPhotos} accessibilityRole="button" style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: alpha(t.s, 0.88) }}>
-                <Icon name={m.photoRequest ? 'schedule' : 'lock'} size={17} color={t.ink} />
-                <T style={{ fontSize: 13.5, fontWeight: '500' }}>{m.photoRequest === 'Declined' ? 'Request declined' : m.photoRequest ? 'Request sent' : 'Request photos'}</T>
-              </Pressable>
-            )}
-          </>
+          <Avatar size={112} initials={m.initials} onSurface />
         )}
       </View>
 
@@ -117,6 +141,12 @@ export default function ProfileScreen() {
           {m.verified && <Icon name="verified" size={22} color={t.p} fill />}
         </View>
         <T style={{ fontSize: 14.5, color: t.mut, marginTop: 4 }}>{[m.age, m.height, m.city].filter(Boolean).join(' · ')}</T>
+        {state === 'matched' && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 10, height: 28, paddingHorizontal: 12, borderRadius: 14, backgroundColor: t.soft }}>
+            <Icon name="favorite" size={15} color={t.p} fill />
+            <T style={{ color: t.p, fontSize: 12.5, fontWeight: '500' }}>You both said yes</T>
+          </View>
+        )}
       </View>
 
       {m.score && (
@@ -132,6 +162,8 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
       )}
+
+      <MorePhotos m={m} onRequest={askPhotos} />
 
       {(m.bio || !!m.hobbies?.length) && (
         <View style={{ paddingTop: 22, paddingHorizontal: 20 }}>
@@ -163,5 +195,45 @@ export default function ProfileScreen() {
       <InterestSheet m={m} open={interest} onClose={() => setInterest(false)} />
       {safety.element}
     </Screen>
+  );
+}
+
+/** Extra photos beyond the default one: shown once allowed, otherwise a request row. */
+function MorePhotos({ m, onRequest }: { m: Profile; onRequest: () => void }) {
+  const t = useTheme();
+  if (m.photos.length) {
+    return (
+      <View style={{ paddingTop: 24 }}>
+        <SectionTitle style={{ marginLeft: 16 + t.grpPx }}>More photos</SectionTitle>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 16 }}>
+          {m.photos.map((p, i) => (
+            <Image key={p} source={{ uri: p }} accessibilityLabel={`${m.first}'s photo ${i + 1}`} style={{ width: 112, height: 140, borderRadius: 14, backgroundColor: t.soft }} resizeMode="cover" />
+          ))}
+        </ScrollView>
+      </View>
+    );
+  }
+  if (!m.photosLocked) return null;
+  const r = m.photoRequest;
+  const label = r === 'Pending' ? 'Requested' : r === 'Declined' || r === 'Revoked' ? 'Not shared' : 'Request';
+  const waiting = !!r;
+  return (
+    <View style={{ paddingTop: 16, paddingHorizontal: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingLeft: 14, paddingRight: 12, borderRadius: 20, backgroundColor: t.card, boxShadow: t.cardShadow }}>
+        <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: t.soft, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="photo_library" size={20} color={t.p} />
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <T style={{ fontSize: 15, fontWeight: '600' }}>Private photos</T>
+          <T style={{ fontSize: 13, color: t.mut, marginTop: 1 }}>
+            {r === 'Pending' ? `Waiting for ${m.first} to allow` : r === 'Declined' || r === 'Revoked' ? `${m.first} kept them private` : `Ask ${m.first} to share more`}
+          </T>
+        </View>
+        <Pressable onPress={waiting ? undefined : onRequest} accessibilityRole="button" accessibilityState={{ disabled: waiting }}
+          style={({ pressed }) => ({ height: 36, paddingHorizontal: 14, borderRadius: t.chipR, backgroundColor: waiting ? 'transparent' : t.p, justifyContent: 'center', opacity: pressed ? 0.8 : 1 })}>
+          <T style={{ fontSize: 14, fontWeight: '600', color: waiting ? t.mut : t.op }}>{label}</T>
+        </Pressable>
+      </View>
+    </View>
   );
 }

@@ -15,6 +15,8 @@ export type HeaderProps = {
   action?: { icon: IconName; onPress: () => void; label: string };
   /** Header sits on the aura with no fill or hairline (sign-in, onboarding, breakdown, tab roots). */
   clear?: boolean;
+  /** Makes the title a button (e.g. a chat's name opens that person's profile). */
+  onTitlePress?: () => void;
 };
 
 /** The soft two-colour glow behind the top of a screen. */
@@ -31,7 +33,7 @@ export function Aura({ height = 260 }: { height?: number }) {
   );
 }
 
-export function Header({ title = '', large, back, action, clear }: HeaderProps) {
+export function Header({ title = '', large, back, action, clear, onTitlePress }: HeaderProps) {
   const t = useTheme();
   const goBack = back ? (back.onPress ?? (() => router.back())) : undefined;
   if (isIOS && large) {
@@ -57,7 +59,11 @@ export function Header({ title = '', large, back, action, clear }: HeaderProps) 
             </Pressable>
           )}
         </View>
-        <T accessibilityRole="header" numberOfLines={1} style={{ fontSize: 17, fontWeight: '600', maxWidth: 180 }}>{title}</T>
+        <Pressable onPress={onTitlePress} disabled={!onTitlePress} accessibilityRole={onTitlePress ? 'button' : 'header'} accessibilityHint={onTitlePress ? 'Opens their profile' : undefined}
+          style={({ pressed }) => ({ maxWidth: 180, flexDirection: 'row', alignItems: 'center', gap: 2, opacity: pressed ? 0.6 : 1 })}>
+          <T numberOfLines={1} style={{ fontSize: 17, fontWeight: '600', flexShrink: 1 }}>{title}</T>
+          {onTitlePress && <Icon name="chevron_right" size={18} color={t.mut} />}
+        </Pressable>
         <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end' }}>
           {action && (
             <Pressable onPress={action.onPress} accessibilityLabel={action.label} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
@@ -75,7 +81,11 @@ export function Header({ title = '', large, back, action, clear }: HeaderProps) 
           <Icon name="arrow_back" size={24} color={t.ink} />
         </Pressable>
       )}
-      <T accessibilityRole="header" numberOfLines={1} style={{ flex: 1, fontSize: 22, paddingLeft: goBack ? 4 : 16 }}>{title}</T>
+      <Pressable onPress={onTitlePress} disabled={!onTitlePress} accessibilityRole={onTitlePress ? 'button' : 'header'} accessibilityHint={onTitlePress ? 'Opens their profile' : undefined}
+        style={({ pressed }) => ({ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 4, paddingLeft: goBack ? 4 : 16, opacity: pressed ? 0.6 : 1 })}>
+        <T numberOfLines={1} style={{ fontSize: 22, flexShrink: 1 }}>{title}</T>
+        {onTitlePress && <Icon name="chevron_right" size={22} color={t.mut} />}
+      </Pressable>
       {action && (
         <Pressable onPress={action.onPress} accessibilityLabel={action.label} android_ripple={{ color: t.line, borderless: true, radius: 24 }} style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}>
           <Icon name={action.icon} size={24} color={t.ink} />

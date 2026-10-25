@@ -1,16 +1,16 @@
 // 2q · Preferences.
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 import { api, type Prefs } from '../api';
-import { Diet, Family, INCOME_PREF_LABELS, Marital, PREF_CITIES, PREF_SUBSECTS, Sect } from '../api/enums';
+import { Diet, Education, Family, INCOME_PREF_LABELS, Marital, Occupation, PREF_CITIES, PREF_STATES, PREF_SUBSECTS, Sect } from '../api/enums';
 import { Button, ChipGroup } from '../components/Controls';
 import { Icon } from '../components/Icon';
 import { Screen, StickyFooter } from '../components/Screen';
 import { D, T } from '../components/Text';
 import { invalidate, useQuery } from '../lib/query';
 import { toast, toastError } from '../lib/stores';
-import { useTheme } from '../theme';
+import { isIOS, useTheme } from '../theme';
 
 const MIN = 18, MAX = 80;
 
@@ -20,6 +20,7 @@ export default function PrefsScreen() {
   const [edited, setP] = useState<Prefs | null>(null);
   const p = edited ?? q.data ?? null;
   const [busy, setBusy] = useState(false);
+  const [city, setCity] = useState('');
 
   const save = async () => {
     if (!p) return;
@@ -36,15 +37,25 @@ export default function PrefsScreen() {
     }
   };
 
+  // Cities you typed yourself stay in the list next to the suggested ones.
+  const cityOptions = [...PREF_CITIES, ...(p?.cities ?? []).filter((c) => !PREF_CITIES.includes(c))];
   const groups: [string, keyof Prefs, string[], boolean][] = [
     ['Marital status', 'marital', Marital.labels, true],
     ['Sect', 'sect', Sect.labels, true],
     ['Sub-sect', 'subSect', PREF_SUBSECTS, true],
     ['Diet', 'diet', Diet.labels, true],
+    ['Education', 'education', Education.labels, true],
+    ['Occupation', 'occupation', Occupation.labels, true],
     ['Minimum income', 'minIncome', INCOME_PREF_LABELS, false],
     ['Family', 'family', Family.labels, true],
-    ['Cities', 'cities', PREF_CITIES, true],
+    ['States', 'states', PREF_STATES, true],
+    ['Cities', 'cities', cityOptions, true],
   ];
+  const addCity = () => {
+    const c = city.replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+    if (p && c && !p.cities.some((x) => x.toLowerCase() === c.toLowerCase())) setP({ ...p, cities: [...p.cities, c] });
+    setCity('');
+  };
 
   const step = (k: 'minAge' | 'maxAge', d: number) =>
     setP(() => {
@@ -89,9 +100,24 @@ export default function PrefsScreen() {
           </View>
           {groups.map(([title, key, options, multi]) => (
             <View key={key} style={{ marginBottom: 22 }}>
-              <T style={{ fontSize: 15, fontWeight: '600', marginBottom: 10 }}>{title}</T>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+                <T style={{ fontSize: 15, fontWeight: '600' }}>{title}</T>
+                {multi && (p[key] as string[]).length === 0 && <T style={{ fontSize: 13, color: t.mut }}>Any</T>}
+              </View>
               <ChipGroup options={options} multi={multi} value={multi ? (p[key] as string[]) : [p[key] as string]}
                 onChange={(v) => setP({ ...p, [key]: multi ? v : v[0] })} />
+              {key === 'cities' && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
+                  <TextInput value={city} onChangeText={setCity} onSubmitEditing={addCity} submitBehavior="submit" returnKeyType="done"
+                    placeholder="Add a city" placeholderTextColor={t.mut} accessibilityLabel="Add a city" selectionColor={t.p} maxLength={40}
+                    style={[{ flex: 1, height: 44, paddingHorizontal: 14, fontSize: 15.5, color: t.ink, outlineStyle: 'none' } as object,
+                      isIOS ? { borderRadius: t.fieldR, backgroundColor: t.s, boxShadow: t.cardShadow } : { borderRadius: 4, borderWidth: 1, borderColor: t.outline }]} />
+                  <Pressable onPress={addCity} disabled={!city.trim()} accessibilityRole="button" accessibilityLabel="Add city"
+                    style={({ pressed }) => ({ height: 44, paddingHorizontal: 16, borderRadius: t.btnR, backgroundColor: t.soft, justifyContent: 'center', opacity: !city.trim() ? 0.45 : pressed ? 0.7 : 1 })}>
+                    <T style={{ color: t.p, fontSize: 15, fontWeight: '600' }}>Add</T>
+                  </Pressable>
+                </View>
+              )}
             </View>
           ))}
         </>

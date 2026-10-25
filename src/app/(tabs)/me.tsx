@@ -27,14 +27,14 @@ type Row = { icon: IconName; t: string; d?: string; value?: string; chev?: boole
 export default function MeScreen() {
   const t = useTheme();
   const me = useQuery('me', () => api.getMe());
-  const blocked = useQuery('me:blocked', () => api.blockedCount());
+  const blocked = useQuery('me:blocked', () => api.blockedList());
   const viewers = useQuery('me:viewers', async () => {
     const [photos, sent] = await Promise.all([api.photoRequests(), api.sentInterests()]);
     return photos.filter((p) => p.status === 'approved').length + sent.filter((s) => s.grant && s.status !== 'Declined').length;
   });
   const [alerts, setAlerts] = useState(true);
   const [del, setDel] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useState<'profile' | 'extra' | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(ALERTS_KEY).then((v) => v !== null && setAlerts(v === '1')).catch(() => {});
@@ -53,19 +53,25 @@ export default function MeScreen() {
     }
   };
 
-  const addPhoto = async () => {
+  /** The profile photo is public; extra photos stay private while "Private extra photos" is on. */
+  const addPhoto = async (kind: 'profile' | 'extra') => {
     const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [4, 5], quality: 0.85 });
     if (r.canceled || !r.assets[0] || !m) return;
     const a = r.assets[0];
-    setUploading(true);
+    setUploading(kind);
     try {
-      const url = await api.uploadPhoto({ uri: a.uri, name: a.fileName ?? 'photo.jpg', mimeType: a.mimeType ?? 'image/jpeg' });
-      await update({ photos: [...m.photos, url] });
-      toast('Photo added', 'add_a_photo');
+      const url = await api.uploadPhoto({ uri: a.uri, name: a.fileName ?? 'photo.jpg', mimeType: a.mimeType ?? 'image/jpeg' }, kind);
+      if (kind === 'profile') {
+        await update({ profilePhoto: url });
+        toast('Profile photo updated', 'add_a_photo');
+      } else {
+        await update({ photos: [...m.photos, url] });
+        toast('Photo added', 'add_a_photo');
+      }
     } catch (e) {
       toastError(e);
     } finally {
-      setUploading(false);
+      setUploading(null);
     }
   };
 
@@ -103,13 +109,14 @@ export default function MeScreen() {
   const kycLabel = m?.kycStatus === 'Pending' ? 'In review' : m?.kycStatus === 'Approved' ? 'Verified' : m?.kycStatus === 'Rejected' ? 'Try again' : 'Not yet';
   const groups: { title: string; rows: Row[] }[] = [
     { title: 'Matching', rows: [
+      { icon: 'edit', t: 'Edit profile', d: 'Family, work, about you', chev: true, onPress: () => router.push('/edit-profile') },
       { icon: 'tune', t: 'Preferences', chev: true, onPress: () => router.push('/prefs') },
       { icon: 'verified', t: 'Get verified', value: kycLabel, chev: true, onPress: () => router.push('/kyc') },
     ] },
     { title: 'Privacy', rows: [
-      { icon: 'lock', t: 'Private photos', d: 'Only people you allow', sw: true, on: m?.photosLocked ?? true, toggle: (v) => update({ photosLocked: v }) },
+      { icon: 'lock', t: 'Private extra photos', d: 'Your profile photo stays visible to everyone', sw: true, on: m?.photosLocked ?? true, toggle: (v) => update({ photosLocked: v }) },
       { icon: 'notifications', t: 'Family alerts', d: 'Also sent to 2 family phones', sw: true, on: alerts, toggle: (v) => { setAlerts(v); AsyncStorage.setItem(ALERTS_KEY, v ? '1' : '0').catch(() => {}); } },
-      { icon: 'block', t: 'Blocked', value: String(blocked.data ?? 0) },
+      { icon: 'block', t: 'Blocked', value: String(blocked.data?.length ?? 0), chev: true, onPress: () => router.push('/blocked') },
     ] },
     { title: 'Your data', rows: [
       { icon: 'download', t: 'Download my data', chev: true, onPress: download },
@@ -117,17 +124,19 @@ export default function MeScreen() {
     ] },
   ];
 
-  let tile = 0;
+  let tileIndex = 0;
+  const tile = { width: 64, height: 80, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed' as const, borderColor: t.outline, alignItems: 'center' as const, justifyContent: 'center' as const };
   return (
     <Screen aura tabRoot header={{ title: 'Profile', large: true, clear: true }} refreshing={me.loading && !!m} onRefresh={() => { me.reload(); invalidate('me:'); }} contentStyle={{ paddingHorizontal: 16, paddingBottom: 28 }}>
       {!m ? (
         me.error ? <T style={{ color: t.mut, textAlign: 'center', marginTop: 32 }}>{me.error.message}</T> : <ActivityIndicator color={t.p} style={{ marginTop: 32 }} />
       ) : (
         <>
-          <Pressable onLongPress={() => router.push('/theme-lab')} delayLongPress={600} accessibilityHint="Long-press to open the theme lab"
+          <Pressable onPress={() => router.push('/edit-profile')} onLongPress={() => router.push('/theme-lab')} delayLongPress={600}
+            accessibilityRole="button" accessibilityLabel={`${m.name}, profile ${m.completeness}% complete. Edit profile`}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: 24, backgroundImage: t.aura('140%', t.card) }}>
             <View style={{ borderRadius: 35, borderWidth: 3, borderColor: t.s }}>
-              <Avatar size={64} initials={m.name.split(' ').map((w) => w[0]).join('').slice(0, 2)} photo={m.photos[0]} onSurface />
+              <Avatar size={64} initials={m.name.split(' ').map((w) => w[0]).join('').slice(0, 2)} photo={m.profilePhoto} onSurface />
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
               <D style={{ fontSize: 22, lineHeight: 27 }}>{m.name}</D>
@@ -141,21 +150,43 @@ export default function MeScreen() {
             </View>
           </Pressable>
 
-          <View style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 20, backgroundColor: t.card, boxShadow: t.cardShadow }}>
-            {m.photos.slice(0, 2).map((p) => <Image key={p} source={{ uri: p }} style={{ width: 64, height: 80, borderRadius: 12 }} resizeMode="cover" />)}
-            {m.photos.length < 6 && (
-              <Pressable onPress={addPhoto} accessibilityLabel="Add a photo" style={{ width: 64, height: 80, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed', borderColor: t.outline, alignItems: 'center', justifyContent: 'center' }}>
-                {uploading ? <ActivityIndicator color={t.p} /> : <Icon name="add_a_photo" size={24} color={t.p} />}
-              </Pressable>
-            )}
-            <View style={{ flex: 1, minWidth: 0, paddingLeft: 4 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Icon name={m.photosLocked ? 'lock' : 'lock_open'} size={16} color={t.ink} />
-                <T style={{ fontSize: 14, fontWeight: '600' }}>{m.photosLocked ? 'Private' : 'Visible'}</T>
+          <View style={{ marginTop: 14, padding: 12, borderRadius: 20, backgroundColor: t.card, boxShadow: t.cardShadow }}>
+            {/* Profile photo: public */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              {m.profilePhoto ? (
+                <Image source={{ uri: m.profilePhoto }} accessibilityLabel="Your profile photo" style={{ width: 64, height: 80, borderRadius: 12 }} resizeMode="cover" />
+              ) : (
+                <Pressable onPress={() => addPhoto('profile')} accessibilityLabel="Add a profile photo" style={tile}>
+                  {uploading === 'profile' ? <ActivityIndicator color={t.p} /> : <Icon name="add_a_photo" size={24} color={t.p} />}
+                </Pressable>
+              )}
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <T style={{ fontSize: 14, fontWeight: '600' }}>Profile photo</T>
+                <T style={{ fontSize: 12.5, lineHeight: 17, color: t.mut, marginTop: 2 }}>Visible to everyone</T>
               </View>
-              <T style={{ fontSize: 12.5, lineHeight: 17, color: t.mut, marginTop: 2 }}>
-                {m.photosLocked ? `${viewers.data ?? 0} ${viewers.data === 1 ? 'person' : 'people'} can see them` : 'Everyone can see them'}
+              <Pressable onPress={() => addPhoto('profile')} disabled={!!uploading} accessibilityRole="button"
+                style={({ pressed }) => ({ height: 34, paddingHorizontal: 14, borderRadius: t.chipR, backgroundColor: t.soft, justifyContent: 'center', opacity: pressed ? 0.7 : 1 })}>
+                {uploading === 'profile' && m.profilePhoto ? <ActivityIndicator color={t.p} /> : <T style={{ color: t.p, fontSize: 14, fontWeight: '600' }}>{m.profilePhoto ? 'Change' : 'Add'}</T>}
+              </Pressable>
+            </View>
+
+            <View style={{ height: 1, backgroundColor: t.line, marginVertical: 12 }} />
+
+            {/* Extra photos: only people you allow */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+              <T style={{ fontSize: 14, fontWeight: '600' }}>More photos</T>
+              <Icon name={m.photosLocked ? 'lock' : 'lock_open'} size={15} color={t.mut} />
+              <T style={{ flex: 1, fontSize: 12.5, color: t.mut }} numberOfLines={1}>
+                {m.photosLocked ? `Private · ${viewers.data ?? 0} ${viewers.data === 1 ? 'person' : 'people'} can see them` : 'Everyone can see them'}
               </T>
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {m.photos.map((p) => <Image key={p} source={{ uri: p }} style={{ width: 64, height: 80, borderRadius: 12 }} resizeMode="cover" />)}
+              {m.photos.length < 6 && (
+                <Pressable onPress={() => addPhoto('extra')} disabled={!!uploading} accessibilityLabel="Add a private photo" style={tile}>
+                  {uploading === 'extra' ? <ActivityIndicator color={t.p} /> : <Icon name="add" size={24} color={t.p} />}
+                </Pressable>
+              )}
             </View>
           </View>
 
@@ -164,7 +195,7 @@ export default function MeScreen() {
               <SectionTitle>{g.title}</SectionTitle>
               <View style={{ backgroundColor: t.grpBg, borderRadius: t.grpR, overflow: 'hidden' }}>
                 {g.rows.map((r, i) => {
-                  const tileColor = r.danger ? DANGER_TILE : TILE[tile++ % TILE.length]!;
+                  const tileColor = r.danger ? DANGER_TILE : TILE[tileIndex++ % TILE.length]!;
                   const fg = r.danger ? t.bad : t.ink;
                   return (
                     <Pressable key={r.t} onPress={r.sw ? () => r.toggle?.(!r.on) : r.onPress} disabled={!r.onPress && !r.sw} android_ripple={{ color: t.line }}

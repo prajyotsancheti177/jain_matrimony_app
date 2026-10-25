@@ -21,7 +21,8 @@ export default function Chat() {
   const msgs = useQuery(`messages:${id}`, () => api.messages(id));
   const [draft, setDraft] = useState('');
   const list = useRef<ComponentRef<typeof FlatList<Message>>>(null);
-  const safety = useSafety(conv ? { id: conv.other.id, name: conv.other.name } : null, () => router.back());
+  const openProfile = conv ? () => router.push(`/profile/${conv.other.id}`) : undefined;
+  const safety = useSafety(conv ? { id: conv.other.id, name: conv.other.name } : null, () => router.back(), openProfile);
 
   useEffect(() => {
     api.markRead(id).then(() => setQueryData<Conversation[]>('chats', (l) => (l ?? []).map((c) => (c.id === id ? { ...c, unread: 0 } : c))));
@@ -55,7 +56,7 @@ export default function Chat() {
   return (
     <View style={{ flex: 1, backgroundColor: t.bg }}>
       <View style={{ paddingTop: insets.top }}>
-        <Header title={conv?.other.name ?? ''} back={{ label: 'Chats' }} action={{ icon: isIOS ? 'more_horiz' : 'more_vert', label: 'More', onPress: safety.open }} />
+        <Header title={conv?.other.name ?? ''} onTitlePress={openProfile} back={{ label: 'Chats' }} action={{ icon: isIOS ? 'more_horiz' : 'more_vert', label: 'More', onPress: safety.open }} />
       </View>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={isIOS ? 'padding' : undefined}>
         <FlatList

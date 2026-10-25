@@ -9,6 +9,7 @@ export type PersonSummary = {
   name: string;
   first: string;
   initials: string;
+  /** The default (profile) photo. Everyone can see it. */
   photo?: string | null;
 };
 
@@ -27,8 +28,9 @@ export type Profile = PersonSummary & {
   marital: string;
   family: string;
   verified: boolean;
-  /** Photos the viewer may see (empty when locked). */
+  /** Extra photos beyond the default one. Empty until the viewer is allowed to see them. */
   photos: string[];
+  /** True while the extra photos are private and the viewer hasn't been given access. */
   photosLocked: boolean;
   photoRequest: 'Pending' | 'Approved' | 'Declined' | 'Revoked' | null;
   score?: Score;
@@ -95,6 +97,9 @@ export type Me = {
   sect: string;
   subSect: string;
   diet: string;
+  /** Default (profile) photo, visible to everyone. */
+  profilePhoto: string | null;
+  /** Extra photos, visible only to people you allow while photosLocked is on. */
   photos: string[];
   photosLocked: boolean;
   kycStatus: 'Unsubmitted' | 'Pending' | 'Approved' | 'Rejected';
@@ -112,6 +117,53 @@ export type Prefs = {
   minIncome: string; // 'Any' or a short income label
   family: string[];
   cities: string[];
+  education: string[];
+  occupation: string[];
+  states: string[];
+};
+
+/** Everything a person can edit about themselves (Edit profile). Empty string / null = not shared. */
+export type ProfileForm = {
+  name: string;
+  dob: string | null; // yyyy-mm-dd
+  marital: string;
+  city: string;
+  state: string;
+  sect: string;
+  subSect: string;
+  diet: string;
+  education: string;
+  occupation: string;
+  organization: string;
+  income: string;
+  family: string;
+  bio: string;
+  hobbies: string[];
+  heightCm: number | null;
+  languages: string[];
+  gotra: string;
+  native: string;
+  mosal: string;
+  fatherName: string;
+  fatherWork: string;
+  motherName: string;
+  motherWork: string;
+  brothers: number;
+  marriedBrothers: number;
+  sisters: number;
+  marriedSisters: number;
+  tob: string;
+  pob: string;
+};
+
+export type BlockedPerson = PersonSummary & { since: string };
+
+/** A photo request this person sent to someone else. */
+export type SentPhotoRequest = {
+  id: string;
+  to: PersonSummary;
+  when: string;
+  status: 'pending' | 'approved' | 'declined' | 'revoked';
 };
 
 export type MatchFilter = 'All' | 'Verified' | 'Strict Jain' | 'Gujarat' | 'Nearby';
@@ -128,8 +180,10 @@ export interface Api {
   updateFcmToken(fcmToken: string): Promise<void>;
 
   getMe(): Promise<Me>;
-  updateMe(patch: Partial<Pick<Me, 'name' | 'dob' | 'gender' | 'marital' | 'sect' | 'subSect' | 'diet' | 'photosLocked' | 'photos'>>): Promise<Me>;
-  uploadPhoto(file: LocalFile): Promise<string>;
+  updateMe(patch: Partial<Pick<Me, 'name' | 'dob' | 'gender' | 'marital' | 'sect' | 'subSect' | 'diet' | 'photosLocked' | 'photos' | 'profilePhoto'>>): Promise<Me>;
+  uploadPhoto(file: LocalFile, kind?: 'profile' | 'extra'): Promise<string>;
+  getProfileForm(): Promise<ProfileForm>;
+  saveProfileForm(f: ProfileForm): Promise<Me>;
   exportData(): Promise<unknown>;
   deleteAccount(): Promise<void>;
 
@@ -148,11 +202,13 @@ export interface Api {
 
   requestPhotos(id: string): Promise<void>;
   photoRequests(): Promise<PhotoRequest[]>;
+  sentPhotoRequests(): Promise<SentPhotoRequest[]>;
   respondPhotoRequest(id: string, status: 'approved' | 'declined' | 'revoked'): Promise<void>;
 
   block(id: string): Promise<void>;
-  report(id: string, reason: string, alsoBlock: boolean): Promise<void>;
-  blockedCount(): Promise<number>;
+  unblock(id: string): Promise<void>;
+  report(id: string, reason: string, alsoBlock: boolean, description?: string): Promise<void>;
+  blockedList(): Promise<BlockedPerson[]>;
 
   conversations(): Promise<Conversation[]>;
   messages(conversationId: string): Promise<Message[]>;
@@ -161,6 +217,6 @@ export interface Api {
   /** Live messages for one conversation. Returns an unsubscribe function. */
   subscribe(conversationId: string, onMessage: (m: Message) => void): () => void;
 
-  kyc(): Promise<{ status: Me['kycStatus']; doc: string }>;
+  kyc(): Promise<{ status: Me['kycStatus']; doc: string; reason?: string }>;
   submitKyc(doc: string, file: LocalFile): Promise<void>;
 }

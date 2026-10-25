@@ -2,8 +2,9 @@
 // Used when EXPO_PUBLIC_API_URL is not set, so the app can be reviewed without a running backend.
 
 import { Asset } from 'expo-asset';
+import { completeness } from './completeness';
 import { ageFrom, firstName, initials } from './format';
-import type { Api, Conversation, Me, Message, PhotoRequest, Prefs, Profile, ReceivedInterest, Score, SentInterest } from './types';
+import type { Api, BlockedPerson, Conversation, Me, Message, PhotoRequest, Prefs, Profile, ProfileForm, ReceivedInterest, Score, SentInterest, SentPhotoRequest } from './types';
 
 const wait = (ms = 250) => new Promise((r) => setTimeout(r, ms));
 const asset = (m: number) => Asset.fromModule(m).uri;
@@ -56,12 +57,31 @@ export class DemoApi implements Api {
   readonly demo = true;
   private me: Me = {
     id: 'me', name: 'Aarav Shah', phone: '+91 98250 43210', age: 29, dob: '1997-03-02', gender: 'Man', marital: 'Never married',
-    sect: 'Murtipujak', subSect: 'Visa Oswal', diet: 'Strict Jain', photos: AARAV, photosLocked: true, kycStatus: 'Unsubmitted', kycDoc: '', completeness: 80,
+    sect: 'Murtipujak', subSect: 'Visa Oswal', diet: 'Strict Jain', profilePhoto: AARAV[0]!, photos: AARAV.slice(1), photosLocked: true, kycStatus: 'Unsubmitted', kycDoc: '', completeness: 80,
   };
   private prefs: Prefs = {
     minAge: 25, maxAge: 30, marital: ['Never married'], sect: ['Murtipujak', 'Sthanakvasi'], subSect: ['Oswal', 'Visa Oswal', 'Dasa Oswal'],
     diet: ['Strict Jain', 'Chovihar'], minIncome: '₹10–20L', family: ['Joint', 'Nuclear'], cities: ['Ahmedabad', 'Mumbai', 'Surat'],
+    education: ['Bachelors', 'Masters', 'CA / CS / CFA'], occupation: [], states: ['Gujarat', 'Maharashtra'],
   };
+  private form: ProfileForm = {
+    name: 'Aarav Shah', dob: '1997-03-02', marital: 'Never married', city: 'Ahmedabad', state: 'Gujarat',
+    sect: 'Murtipujak', subSect: 'Visa Oswal', diet: 'Strict Jain', education: 'CA / CS / CFA', occupation: 'CA / Finance',
+    organization: 'Shah & Associates', income: '₹20–35L', family: 'Joint',
+    bio: 'Chartered accountant in our family practice. Morning pooja with my parents, cricket on Sundays, and always up for a pathshala discussion.',
+    hobbies: ['Cricket', 'Travel', 'Pathshala'], heightCm: 175, languages: ['Gujarati', 'Hindi', 'English'],
+    gotra: 'Kothari', native: 'Palitana', mosal: '', fatherName: 'Rajesh Shah', fatherWork: 'Diamond business', motherName: 'Meena Shah', motherWork: 'Homemaker',
+    brothers: 1, marriedBrothers: 1, sisters: 0, marriedSisters: 0, tob: '', pob: 'Ahmedabad',
+  };
+  private blockedPeople: BlockedPerson[] = [
+    { ...sum('Rohit Bothra', 'u-rohit'), since: '3 days ago' },
+    { ...sum('Sneha Kothari', 'u-sneha'), since: 'Last week' },
+  ];
+  private sentPhotos: SentPhotoRequest[] = [
+    { id: 'sp1', to: sum('Priya Shah', 'm1'), when: 'Yesterday', status: 'pending' },
+    { id: 'sp2', to: sum('Neha Jain', 'm2'), when: '3 days ago', status: 'approved' },
+    { id: 'sp3', to: sum('Anjali Parekh', 'u-anjali'), when: '2 weeks ago', status: 'declined' },
+  ];
   private blocked = new Set<string>();
   private sentTo = new Map<string, boolean>();
   private received: ReceivedInterest[] = [
@@ -102,9 +122,16 @@ export class DemoApi implements Api {
   async logout() { await wait(100); }
   async updateFcmToken(_fcmToken: string) { await wait(50); }
 
-  async getMe() { await wait(100); return { ...this.me, age: ageFrom(this.me.dob) }; }
+  async getMe() { await wait(100); return { ...this.me, age: ageFrom(this.me.dob), completeness: completeness(this.form).pct }; }
   async updateMe(p: Parameters<Api['updateMe']>[0]) { await wait(); this.me = { ...this.me, ...p }; return this.getMe(); }
   async uploadPhoto(file: { uri: string }) { await wait(600); return file.uri; }
+  async getProfileForm() { await wait(150); return structuredClone(this.form); }
+  async saveProfileForm(f: ProfileForm) {
+    await wait(400);
+    this.form = structuredClone(f);
+    this.me = { ...this.me, name: f.name, dob: f.dob, marital: f.marital, sect: f.sect, subSect: f.subSect, diet: f.diet };
+    return this.getMe();
+  }
   async exportData() { await wait(); return { profile: this.me, preferences: this.prefs }; }
   async deleteAccount() { await wait(); }
 
@@ -153,6 +180,7 @@ export class DemoApi implements Api {
 
   async requestPhotos(id: string) { await wait(); const m = MEMBERS.find((x) => x.id === id); if (m) m.photoRequest = 'Pending'; }
   async photoRequests() { await wait(); return this.photoReqs.map((r) => ({ ...r })); }
+  async sentPhotoRequests() { await wait(); return this.sentPhotos.map((r) => ({ ...r })); }
   async respondPhotoRequest(id: string, status: PhotoRequest['status']) { await wait(150); this.photoReqs.find((r) => r.id === id)!.status = status; }
 
   async block(id: string) {
@@ -160,8 +188,20 @@ export class DemoApi implements Api {
     this.blocked.add(id);
     this.convs = this.convs.filter((c) => c.id !== id && c.other.id !== id);
   }
-  async report(id: string, _reason: string, alsoBlock: boolean) { await wait(); if (alsoBlock) await this.block(id); }
-  async blockedCount() { return this.blocked.size || 1; }
+  async unblock(id: string) {
+    await wait(200);
+    this.blocked.delete(id);
+    this.blockedPeople = this.blockedPeople.filter((b) => b.id !== id);
+  }
+  async report(id: string, _reason: string, alsoBlock: boolean, _description?: string) { await wait(); if (alsoBlock) await this.block(id); }
+  async blockedList() {
+    await wait();
+    const fresh = [...this.blocked].filter((id) => !this.blockedPeople.some((b) => b.id === id)).map((id) => {
+      const m = MEMBERS.find((x) => x.id === id);
+      return { ...sum(m?.name ?? 'Member', id), since: 'Just now' };
+    });
+    return [...fresh, ...this.blockedPeople];
+  }
 
   async conversations() { await wait(); return this.convs.filter((c) => !this.blocked.has(c.other.id)).map((c) => ({ ...c })); }
   async messages(id: string) { await wait(100); return [...(this.msgs[id] ?? [])]; }
@@ -181,6 +221,6 @@ export class DemoApi implements Api {
     return () => set.delete(cb);
   }
 
-  async kyc() { await wait(100); return { status: this.me.kycStatus, doc: this.me.kycDoc }; }
+  async kyc() { await wait(100); return { status: this.me.kycStatus, doc: this.me.kycDoc, reason: undefined }; }
   async submitKyc(doc: string) { await wait(600); this.me.kycStatus = 'Pending'; this.me.kycDoc = doc; }
 }

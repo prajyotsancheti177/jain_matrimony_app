@@ -62,7 +62,7 @@ function MatchCard({ m, sent, onInterest }: { m: Profile; sent: boolean; onInter
         )}
         <View style={{ position: 'absolute', left: 20, bottom: 14, flexDirection: 'row', alignItems: 'center', gap: 6, height: 28, paddingHorizontal: 10, borderRadius: 14, backgroundColor: alpha(t.s, 0.88) }}>
           <Icon name={m.photosLocked ? 'lock' : 'lock_open'} size={15} color={t.ink} />
-          <T style={{ fontSize: 12.5, fontWeight: '500' }}>{m.photosLocked ? 'Photos private' : 'Photos shared'}</T>
+          <T style={{ fontSize: 12.5, fontWeight: '500' }}>{m.photosLocked ? 'More photos private' : 'Photos shared'}</T>
         </View>
       </Pressable>
       <View style={{ paddingTop: 14, paddingHorizontal: 18, paddingBottom: 18 }}>
