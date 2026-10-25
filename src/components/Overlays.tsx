@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Animated, Dimensions, KeyboardAvoidingView, Modal, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useToast } from '../lib/stores';
+import { useAndroidKeyboardHeight } from '../lib/keyboard';
 import { alpha, isAndroid, isIOS, useTheme } from '../theme';
 import { Button, TextButton } from './Controls';
 import { Icon, type IconName } from './Icon';
@@ -15,6 +16,7 @@ const SCRIM = 'rgba(20,12,40,0.38)';
 function Layer({ open, onClose, kind, children }: { open: boolean; onClose: () => void; kind: 'sheet' | 'dialog'; children: ReactNode }) {
   const [mounted, setMounted] = useState(open);
   const [a] = useState(() => new Animated.Value(0));
+  const keyboard = useAndroidKeyboardHeight();
   if (open && !mounted) setMounted(true);
   useEffect(() => {
     Animated.timing(a, { toValue: open ? 1 : 0, duration: open ? 260 : 200, useNativeDriver: true }).start(() => {
@@ -28,7 +30,7 @@ function Layer({ open, onClose, kind, children }: { open: boolean; onClose: () =
       <Animated.View style={{ position: 'absolute', inset: 0, backgroundColor: SCRIM, opacity: a }}>
         <Pressable style={{ flex: 1 }} onPress={onClose} accessibilityLabel="Close" />
       </Animated.View>
-      <KeyboardAvoidingView behavior={isIOS ? 'padding' : 'height'} style={{ flex: 1, justifyContent: kind === 'sheet' ? 'flex-end' : 'center' }} pointerEvents="box-none">
+      <KeyboardAvoidingView enabled={isIOS} behavior="padding" style={{ flex: 1, justifyContent: kind === 'sheet' ? 'flex-end' : 'center', paddingBottom: keyboard }} pointerEvents="box-none">
         <Animated.View
           style={
             kind === 'sheet'

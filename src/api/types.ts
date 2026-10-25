@@ -97,6 +97,8 @@ export type Me = {
   sect: string;
   subSect: string;
   diet: string;
+  city: string;
+  state: string;
   /** Default (profile) photo, visible to everyone. */
   profilePhoto: string | null;
   /** Extra photos, visible only to people you allow while photosLocked is on. */
@@ -180,7 +182,7 @@ export interface Api {
   updateFcmToken(fcmToken: string): Promise<void>;
 
   getMe(): Promise<Me>;
-  updateMe(patch: Partial<Pick<Me, 'name' | 'dob' | 'gender' | 'marital' | 'sect' | 'subSect' | 'diet' | 'photosLocked' | 'photos' | 'profilePhoto'>>): Promise<Me>;
+  updateMe(patch: Partial<Pick<Me, 'name' | 'dob' | 'gender' | 'marital' | 'sect' | 'subSect' | 'diet' | 'city' | 'state' | 'photosLocked' | 'photos' | 'profilePhoto'>>): Promise<Me>;
   uploadPhoto(file: LocalFile, kind?: 'profile' | 'extra'): Promise<string>;
   getProfileForm(): Promise<ProfileForm>;
   saveProfileForm(f: ProfileForm): Promise<Me>;

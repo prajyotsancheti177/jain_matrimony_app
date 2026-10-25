@@ -58,7 +58,8 @@ export default function Chat() {
       <View style={{ paddingTop: insets.top }}>
         <Header title={conv?.other.name ?? ''} onTitlePress={openProfile} back={{ label: 'Chats' }} action={{ icon: isIOS ? 'more_horiz' : 'more_vert', label: 'More', onPress: safety.open }} />
       </View>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={isIOS ? 'padding' : undefined}>
+      {/* Edge to edge on Android: the window doesn't resize for the keyboard, so pad on both platforms. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <FlatList
           ref={list}
           data={data}

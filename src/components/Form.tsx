@@ -42,7 +42,7 @@ export function TextField({
         multiline && { paddingTop: 14, paddingBottom: 14, lineHeight: 22 },
         isIOS
           ? { borderRadius: t.fieldR, backgroundColor: t.s, boxShadow: t.cardShadow }
-          : { borderRadius: 4, borderWidth: focused ? 2 : 1, borderColor: focused ? t.p : t.outline, paddingHorizontal: focused ? 15 : 16 },
+          : { borderRadius: 4, borderWidth: focused ? 2 : 1, borderColor: focused ? t.p : t.outline, paddingHorizontal: focused ? 15 : 16, backgroundColor: 'transparent' },
       ]}
     />
   );
@@ -155,7 +155,7 @@ export function TagInput({
             maxLength={40}
             style={[
               { flex: 1, height: 44, paddingHorizontal: 14, fontSize: 15.5, color: t.ink, outlineStyle: 'none' } as object,
-              isIOS ? { borderRadius: t.fieldR, backgroundColor: t.s, boxShadow: t.cardShadow } : { borderRadius: 4, borderWidth: 1, borderColor: t.outline },
+              isIOS ? { borderRadius: t.fieldR, backgroundColor: t.s, boxShadow: t.cardShadow } : { borderRadius: 4, borderWidth: 1, borderColor: t.outline, backgroundColor: 'transparent' },
             ]}
           />
           <Pressable onPress={submit} disabled={!draft.trim()} accessibilityRole="button" accessibilityLabel={`Add ${draft || 'item'}`}

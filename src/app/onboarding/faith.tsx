@@ -21,8 +21,8 @@ export default function Faith() {
   const finish = async () => {
     setBusy(true);
     try {
-      const { name, gender, dob, marital, sect, subSect, diet } = useOnboarding.getState();
-      await api.updateMe({ name: name.trim(), gender, dob, marital, sect, subSect, diet });
+      const { name, gender, dob, marital, sect, subSect, diet, city, state } = useOnboarding.getState();
+      await api.updateMe({ name: name.trim(), gender, dob, marital, sect, subSect, diet, city, state });
       useSession.getState().set({ status: 'signedIn' });
       invalidate('');
       router.dismissAll();

@@ -9,7 +9,9 @@ export const useOnboarding = create<{
   sect: string;
   subSect: string;
   diet: string;
-  set: (p: Partial<{ name: string; gender: string; dob: string | null; marital: string; sect: string; subSect: string; diet: string }>) => void;
+  city: string;
+  state: string;
+  set: (p: Partial<{ name: string; gender: string; dob: string | null; marital: string; sect: string; subSect: string; diet: string; city: string; state: string }>) => void;
 }>((set) => ({
   name: '',
   gender: 'Man',
@@ -18,5 +20,7 @@ export const useOnboarding = create<{
   sect: 'Murtipujak',
   subSect: 'Visa Oswal',
   diet: 'Strict Jain',
+  city: '',
+  state: '',
   set: (p) => set(p),
 }));

@@ -94,6 +94,11 @@ function toScore(c: BScore): Score {
   };
 }
 
+/** The backend names every new account this until onboarding sets a real name. */
+const PLACEHOLDER_NAME = 'New Jain User';
+/** The person's own name, or '' while it's still the backend's placeholder. */
+const ownName = (u: BUser) => (u.fullName && u.fullName !== PLACEHOLDER_NAME ? u.fullName : '');
+
 /** The default photo, unless it's the backend's placeholder. Everyone may see it. */
 function publicPhoto(u: BUser): string | null {
   const p = u.defaultPhotoUrl;
@@ -107,7 +112,7 @@ function extraPhotos(u: BUser): string[] {
 }
 
 function summary(u: BUser): PersonSummary {
-  const name = u.fullName || 'Member';
+  const name = ownName(u) || 'Member';
   return { id: u.id, name, first: firstName(name), initials: initials(name), photo: publicPhoto(u) };
 }
 
@@ -169,7 +174,7 @@ function toProfile(u: BUser): Profile {
 function toForm(u: BUser): ProfileForm {
   const d = u.profileDetails ?? {};
   return {
-    name: u.fullName ?? '',
+    name: ownName(u),
     dob: u.dateOfBirth ? String(u.dateOfBirth).slice(0, 10) : null,
     marital: E.Marital.label(u.maritalStatus),
     city: u.city ?? '',
@@ -205,7 +210,7 @@ function toForm(u: BUser): ProfileForm {
 function toMe(u: BUser): Me {
   return {
     id: u.id,
-    name: u.fullName ?? '',
+    name: ownName(u),
     phone: u.phoneNumber ?? '',
     age: ageFrom(u.dateOfBirth),
     dob: u.dateOfBirth ? String(u.dateOfBirth).slice(0, 10) : null,
@@ -214,6 +219,8 @@ function toMe(u: BUser): Me {
     sect: E.Sect.label(u.sect),
     subSect: E.SubSect.label(u.subSect),
     diet: E.Diet.label(u.diet),
+    city: u.city ?? '',
+    state: u.state ?? '',
     profilePhoto: publicPhoto(u),
     photos: extraPhotos(u),
     photosLocked: u.isPhotosLocked ?? true,
@@ -325,6 +332,8 @@ export class HttpApi implements Api {
     if (p.sect !== undefined) body.sect = E.Sect.value(p.sect);
     if (p.subSect !== undefined) body.subSect = E.SubSect.value(p.subSect);
     if (p.diet !== undefined) body.diet = E.Diet.value(p.diet);
+    if (p.city !== undefined) body.city = p.city.trim() || null;
+    if (p.state !== undefined) body.state = p.state.trim() || null;
     if (p.photosLocked !== undefined) body.isPhotosLocked = p.photosLocked;
     // Extra photos and the default photo are saved separately, so a private photo never becomes the public one.
     if (p.photos !== undefined) body.photoUrls = p.photos;

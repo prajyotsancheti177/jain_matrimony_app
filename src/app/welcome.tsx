@@ -1,8 +1,8 @@
 // 2a · Welcome & log in (option 5c, with the 6a thin folded-hands mark).
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
-import { KeyboardAvoidingView, ScrollView, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Keyboard, KeyboardAvoidingView, ScrollView, TextInput, View, type ScrollViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../api';
 import { formatPhone } from '../api/format';
@@ -24,6 +24,22 @@ export default function Welcome() {
   const [phone, setPhone] = useState(useSession.getState().phone);
   const [busy, setBusy] = useState(false);
   const ok = phone.replace(/\D/g, '').length === 10;
+  const scroll = useRef<ScrollViewInstance>(null);
+  const [keyboard, setKeyboard] = useState(false);
+
+  // Keep the number field and Continue in view while the keyboard is open,
+  // and hide the mark then so it doesn't run into the greeting on the shorter screen.
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboard(true);
+      scroll.current?.scrollToEnd({ animated: true });
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboard(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   const send = async () => {
     if (!ok) return;
@@ -59,11 +75,12 @@ export default function Welcome() {
   const check = ok && <Icon name="check_circle" size={22} color={t.ok} fill />;
 
   return (
-    <KeyboardAvoidingView behavior={isIOS ? 'padding' : undefined} style={{ flex: 1, backgroundImage: `linear-gradient(165deg, ${mix(t.p, 82, '#FFFFFF')}, ${mix(t.p, 80, '#000000')} 62%)` }}>
+    // Android draws edge to edge, so the window no longer shrinks for the keyboard: pad on both platforms.
+    <KeyboardAvoidingView behavior="padding" style={{ flex: 1, backgroundImage: `linear-gradient(165deg, ${mix(t.p, 82, '#FFFFFF')}, ${mix(t.p, 80, '#000000')} 62%)` }}>
       <StatusBar style="light" />
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled" bounces={false}>
+      <ScrollView ref={scroll} contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled" bounces={false}>
         {/* Jai Jinendra mark: thin outline hands over a soft gold glow */}
-        <View pointerEvents="none" style={{ position: 'absolute', top: insets.top + 24, alignSelf: 'center', width: 240, height: 320, opacity: 0.9, alignItems: 'center' }}>
+        <View pointerEvents="none" style={{ position: 'absolute', top: insets.top + 24, alignSelf: 'center', width: 240, height: 320, opacity: keyboard ? 0 : 0.9, alignItems: 'center' }}>
           <View style={{ position: 'absolute', top: 147 - 140, width: 280, height: 280, borderRadius: 140, backgroundImage: `radial-gradient(circle, ${alpha(t.a, 0.38)}, transparent 68%)` }} />
           <View style={{ width: 240, height: 300, alignItems: 'center', justifyContent: 'center' }}>
             <FoldedHands size={230} color="#FFFFFF" />

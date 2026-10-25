@@ -93,7 +93,7 @@ export function useSafety(person: { id: string; name: string } | null, onBlocked
           <TextInput value={details} onChangeText={setDetails} multiline maxLength={1000} textAlignVertical="top"
             placeholder="What happened? (optional)" placeholderTextColor={t.mut} accessibilityLabel="Details for the review team" selectionColor={t.p}
             style={[{ minHeight: 84, marginTop: 14, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 12, fontSize: 15, lineHeight: 21, color: t.ink, outlineStyle: 'none' } as object,
-              isIOS ? { borderRadius: 12, backgroundColor: t.s } : { borderRadius: 4, borderWidth: 1, borderColor: t.outline }]} />
+              isIOS ? { borderRadius: 12, backgroundColor: t.s } : { borderRadius: 4, borderWidth: 1, borderColor: t.outline, backgroundColor: 'transparent' }]} />
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 14, paddingBottom: 4 }}>
             <T style={{ flex: 1, fontSize: 15.5 }}>Also block {first}</T>
             <Switch on={alsoBlock} onChange={setAlsoBlock} label={`Also block ${first}`} />

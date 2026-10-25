@@ -9,6 +9,7 @@ import { dobLabel, toIsoDate } from '../../api/format';
 import { Button, ChipGroup, ProgressBar, Segmented } from '../../components/Controls';
 import { Icon } from '../../components/Icon';
 import { IosPickerSheet } from '../../components/Overlays';
+import { TextField } from '../../components/Form';
 import { FieldLabel, Screen } from '../../components/Screen';
 import { D, T } from '../../components/Text';
 import { signOut } from '../../lib/session';
@@ -39,6 +40,8 @@ export default function About() {
         ...(me.sect && { sect: me.sect }),
         ...(me.subSect && { subSect: me.subSect }),
         ...(me.diet && { diet: me.diet }),
+        city: s.city || me.city,
+        state: s.state || me.state,
       });
     }).catch(() => {});
   }, []);
@@ -63,7 +66,8 @@ export default function About() {
     } else setPicker(true);
   };
 
-  const canContinue = o.name.trim().length > 1 && !!o.dob;
+  // City feeds the location part of the match score, so it's required; state is optional.
+  const canContinue = o.name.trim().length > 1 && !!o.dob && o.city.trim().length > 1;
 
   return (
     <Screen aura fill header={{ back: { label: 'Back', onPress: () => (router.canGoBack() ? router.back() : signOut()) }, clear: true }} contentStyle={{ paddingTop: 8, paddingHorizontal: 24, paddingBottom: 20 }}>
@@ -96,6 +100,16 @@ export default function About() {
 
       <FieldLabel gap={8}>Marital status</FieldLabel>
       <ChipGroup options={Marital.labels} value={[o.marital]} onChange={([marital]) => o.set({ marital })} />
+
+      <View style={{ flexDirection: 'row', gap: 12, marginTop: 22 }}>
+        <View style={{ flex: 1.2, minWidth: 0 }}>
+          <TextField label="City" value={o.city} onChange={(city) => o.set({ city })} placeholder="Ahmedabad" autoCapitalize="words" />
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <TextField label="State" value={o.state} onChange={(state) => o.set({ state })} placeholder="Gujarat" autoCapitalize="words" />
+        </View>
+      </View>
+      <T style={{ fontSize: 12.5, color: t.mut, marginTop: 6, marginLeft: 4 }}>Used to find matches near you.</T>
 
       <View style={{ flex: 1, minHeight: 24 }} />
       <Button label="Continue" onPress={() => router.push('/onboarding/faith')} disabled={!canContinue} />

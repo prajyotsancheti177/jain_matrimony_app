@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Pressable, RefreshControl, ScrollView, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAndroidKeyboardHeight } from '../lib/keyboard';
 import { alpha, isAndroid, isIOS, useTheme } from '../theme';
 import { Icon, type IconName } from './Icon';
 import { T } from './Text';
@@ -107,6 +108,7 @@ export function Screen({
 }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  const keyboard = useAndroidKeyboardHeight();
   const body = scroll ? (
     <ScrollView
       style={{ flex: 1 }}
@@ -123,10 +125,18 @@ export function Screen({
     <View style={{ flex: 1, backgroundColor: t.bg }}>
       {aura && <Aura />}
       <View style={{ paddingTop: insets.top }}>{header && <Header {...header} />}</View>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={isIOS ? 'padding' : undefined}>
-        {body}
-        {footer}
-      </KeyboardAvoidingView>
+      {isIOS ? (
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+          {body}
+          {footer}
+        </KeyboardAvoidingView>
+      ) : (
+        // Edge to edge: Android doesn't resize the window for the keyboard, so make the room here.
+        <View style={{ flex: 1, paddingBottom: keyboard }}>
+          {body}
+          {footer}
+        </View>
+      )}
       {overlay}
     </View>
   );

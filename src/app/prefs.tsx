@@ -111,7 +111,7 @@ export default function PrefsScreen() {
                   <TextInput value={city} onChangeText={setCity} onSubmitEditing={addCity} submitBehavior="submit" returnKeyType="done"
                     placeholder="Add a city" placeholderTextColor={t.mut} accessibilityLabel="Add a city" selectionColor={t.p} maxLength={40}
                     style={[{ flex: 1, height: 44, paddingHorizontal: 14, fontSize: 15.5, color: t.ink, outlineStyle: 'none' } as object,
-                      isIOS ? { borderRadius: t.fieldR, backgroundColor: t.s, boxShadow: t.cardShadow } : { borderRadius: 4, borderWidth: 1, borderColor: t.outline }]} />
+                      isIOS ? { borderRadius: t.fieldR, backgroundColor: t.s, boxShadow: t.cardShadow } : { borderRadius: 4, borderWidth: 1, borderColor: t.outline, backgroundColor: 'transparent' }]} />
                   <Pressable onPress={addCity} disabled={!city.trim()} accessibilityRole="button" accessibilityLabel="Add city"
                     style={({ pressed }) => ({ height: 44, paddingHorizontal: 16, borderRadius: t.btnR, backgroundColor: t.soft, justifyContent: 'center', opacity: !city.trim() ? 0.45 : pressed ? 0.7 : 1 })}>
                     <T style={{ color: t.p, fontSize: 15, fontWeight: '600' }}>Add</T>

@@ -57,7 +57,7 @@ export class DemoApi implements Api {
   readonly demo = true;
   private me: Me = {
     id: 'me', name: 'Aarav Shah', phone: '+91 98250 43210', age: 29, dob: '1997-03-02', gender: 'Man', marital: 'Never married',
-    sect: 'Murtipujak', subSect: 'Visa Oswal', diet: 'Strict Jain', profilePhoto: AARAV[0]!, photos: AARAV.slice(1), photosLocked: true, kycStatus: 'Unsubmitted', kycDoc: '', completeness: 80,
+    sect: 'Murtipujak', subSect: 'Visa Oswal', diet: 'Strict Jain', city: 'Ahmedabad', state: 'Gujarat', profilePhoto: AARAV[0]!, photos: AARAV.slice(1), photosLocked: true, kycStatus: 'Unsubmitted', kycDoc: '', completeness: 80,
   };
   private prefs: Prefs = {
     minAge: 25, maxAge: 30, marital: ['Never married'], sect: ['Murtipujak', 'Sthanakvasi'], subSect: ['Oswal', 'Visa Oswal', 'Dasa Oswal'],
@@ -129,7 +129,7 @@ export class DemoApi implements Api {
   async saveProfileForm(f: ProfileForm) {
     await wait(400);
     this.form = structuredClone(f);
-    this.me = { ...this.me, name: f.name, dob: f.dob, marital: f.marital, sect: f.sect, subSect: f.subSect, diet: f.diet };
+    this.me = { ...this.me, name: f.name, dob: f.dob, marital: f.marital, sect: f.sect, subSect: f.subSect, diet: f.diet, city: f.city, state: f.state };
     return this.getMe();
   }
   async exportData() { await wait(); return { profile: this.me, preferences: this.prefs }; }
