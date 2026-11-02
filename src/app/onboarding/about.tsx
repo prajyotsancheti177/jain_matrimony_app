@@ -2,7 +2,6 @@
 // Each question group is a card like the Preferences screen: icon tile, title, current answer in teal.
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
-import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, BackHandler, Image, Pressable, View, type ScrollViewInstance } from 'react-native';
@@ -152,6 +151,8 @@ export default function Onboarding() {
         setLocated(true);
         return;
       }
+      // Load the location module only when asked, so a missing native module can't take down onboarding.
+      const Location = await import('expo-location');
       const perm = await Location.requestForegroundPermissionsAsync();
       if (!perm.granted) {
         toast('Location is off. Type your city instead.', 'location_on');
