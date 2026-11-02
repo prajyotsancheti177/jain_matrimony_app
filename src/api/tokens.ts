@@ -33,11 +33,21 @@ export async function saveTokens(t: Tokens | null) {
 }
 
 /** User id (`sub`) from the access token, without verifying it. */
-export function userIdFromToken(token: string): string | null {
+function claims(token: string): { sub?: string; exp?: number } | null {
   try {
     const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(atob(part.padEnd(part.length + ((4 - (part.length % 4)) % 4), '='))).sub ?? null;
+    return JSON.parse(atob(part.padEnd(part.length + ((4 - (part.length % 4)) % 4), '=')));
   } catch {
     return null;
   }
+}
+
+export function userIdFromToken(token: string): string | null {
+  return claims(token)?.sub ?? null;
+}
+
+/** True when the token expires within `marginSec` seconds (or can't be read). */
+export function tokenExpiresSoon(token: string, marginSec = 60): boolean {
+  const exp = claims(token)?.exp;
+  return !exp || exp * 1000 - Date.now() < marginSec * 1000;
 }

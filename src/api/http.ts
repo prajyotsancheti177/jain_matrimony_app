@@ -6,7 +6,7 @@ import { File as ExpoFile } from 'expo-file-system';
 import { completeness } from './completeness';
 import * as E from './enums';
 import { ageFrom, ago, firstName, heightLabel, initials, shortTime } from './format';
-import { loadTokens, saveTokens, userIdFromToken, type Tokens } from './tokens';
+import { loadTokens, saveTokens, tokenExpiresSoon, userIdFromToken, type Tokens } from './tokens';
 import type { Api, BlockedPerson, OnboardingProfile, Conversation, LocalFile, Me, Message, PersonSummary, Prefs, Profile, ProfileForm, Score, SentPhotoRequest } from './types';
 
 export class ApiError extends Error {
@@ -678,18 +678,56 @@ export class HttpApi implements Api {
   }
   async sendMessage(id: string, text: string) {
     const me = await this.meId();
+    // Send over the live connection so the other person gets it instantly.
+    // If that isn't up (or doesn't answer), the REST route saves it and the server pushes it live too.
+    const s = this.socket;
+    if (s?.connected) {
+      const saved = await s.timeout(6000).emitWithAck('sendMessage', { conversationId: id, content: text }).catch(() => null) as BMessage | null;
+      if (saved?.id) return this.toMessage(saved, me);
+    }
     return this.toMessage(await this.req<BMessage>('POST', '/chat/messages', { conversationId: id, content: text }), me);
   }
   async markRead(id: string) {
     await this.req('PATCH', `/chat/conversations/${id}/read`).catch(() => {});
   }
+  /** An access token that is good for at least another minute, refreshed if needed. */
+  private async freshToken(): Promise<string | null> {
+    let t = await loadTokens();
+    if (t && tokenExpiresSoon(t.accessToken) && (await this.refresh())) t = await loadTokens();
+    return t?.accessToken ?? null;
+  }
+
+  /**
+   * One live connection for chat. Login tokens last 15 minutes, so every (re)connect asks for a
+   * fresh one instead of reusing the token from when the app opened. If the server drops us
+   * (for example over an expired token), connect again with a new token.
+   */
+  private chatSocket(): Socket {
+    if (this.socket) return this.socket;
+    const s = io(`${this.base}/chat`, {
+      transports: ['websocket'],
+      auth: (cb) => {
+        this.freshToken().then((token) => cb({ token: token ?? '' }), () => cb({ token: '' }));
+      },
+    });
+    s.on('disconnect', (reason) => {
+      // Only retry while still signed in, so a logged-out app doesn't keep knocking.
+      if (reason === 'io server disconnect' && this.socket === s) {
+        setTimeout(async () => {
+          if (this.socket === s && !s.connected && (await this.freshToken())) s.connect();
+        }, 1500);
+      }
+    });
+    this.socket = s;
+    return s;
+  }
+
   subscribe(conversationId: string, onMessage: (m: Message) => void) {
     let off = () => {};
     (async () => {
       const t = await loadTokens();
       if (!t) return;
-      this.socket ??= io(`${this.base}/chat`, { auth: { token: t.accessToken }, transports: ['websocket'] });
-      const s = this.socket;
+      const s = this.chatSocket();
       const me = userIdFromToken(t.accessToken);
       const join = () => s.emit('joinConversation', { conversationId });
       const handler = (m: BMessage) => {

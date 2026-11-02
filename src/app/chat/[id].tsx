@@ -28,7 +28,8 @@ export default function Chat() {
   useEffect(() => {
     api.markRead(id).then(() => setQueryData<Conversation[]>('chats', (l) => (l ?? []).map((c) => (c.id === id ? { ...c, unread: 0 } : c))));
     return api.subscribe(id, (m) => {
-      setQueryData<Message[]>(`messages:${id}`, (l) => [...(l ?? []), m]);
+      // The server can deliver the same message more than once (reconnects, two rooms): show it once.
+      setQueryData<Message[]>(`messages:${id}`, (l) => (l?.some((x) => x.id === m.id) ? l : [...(l ?? []), m]));
       api.markRead(id);
     });
   }, [id]);
