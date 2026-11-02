@@ -7,7 +7,7 @@ import { completeness } from './completeness';
 import * as E from './enums';
 import { ageFrom, ago, firstName, heightLabel, initials, shortTime } from './format';
 import { loadTokens, saveTokens, userIdFromToken, type Tokens } from './tokens';
-import type { Api, BlockedPerson, Conversation, LocalFile, Me, Message, PersonSummary, Prefs, Profile, ProfileForm, Score, SentPhotoRequest } from './types';
+import type { Api, BlockedPerson, OnboardingProfile, Conversation, LocalFile, Me, Message, PersonSummary, Prefs, Profile, ProfileForm, Score, SentPhotoRequest } from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -74,6 +74,17 @@ type BDetails = {
   marriedSistersCount?: number;
   timeOfBirth?: string | null;
   placeOfBirth?: string | null;
+  firstName?: string | null;
+  middleName?: string | null;
+  lastName?: string | null;
+  bloodGroup?: string | null;
+  paternalGrandfatherName?: string | null;
+  paternalGrandmotherName?: string | null;
+  maternalGrandfatherName?: string | null;
+  maternalGrandmotherName?: string | null;
+  dadiSaakha?: string | null;
+  naniSaakha?: string | null;
+  mamaSaakha?: string | null;
 };
 type BCrit = { score: number; max: number; description: string };
 type BScore = { score: number; breakdown: Record<'sect' | 'subSect' | 'diet' | 'age' | 'location', BCrit> };
@@ -399,6 +410,66 @@ export class HttpApi implements Api {
       placeOfBirth: text(f.pob),
     });
     return this.getMe();
+  }
+  async getOnboarding(): Promise<Partial<OnboardingProfile>> {
+    const u = await this.req<BUser>('GET', '/users/profile');
+    const d = u.profileDetails ?? {};
+    const own = ownName(u);
+    const s = (v?: string | null) => v ?? '';
+    // Accounts made before the name was split only have the full name: keep it as the first name.
+    return {
+      first: s(d.firstName) || (d.lastName ? '' : own),
+      middle: s(d.middleName),
+      last: s(d.lastName),
+      ...(u.gender ? { gender: E.Gender.label(u.gender) } : {}),
+      ...(u.maritalStatus ? { marital: E.Marital.label(u.maritalStatus) } : {}),
+      dob: u.dateOfBirth ? String(u.dateOfBirth).slice(0, 10) : null,
+      city: s(u.city), state: s(u.state), hometown: s(d.nativePlace),
+      ...(u.sect ? { sect: E.Sect.label(u.sect) } : {}),
+      ...(u.subSect ? { subSect: E.SubSect.label(u.subSect) } : {}),
+      ...(u.diet ? { diet: E.Diet.label(u.diet) } : {}),
+      education: u.highestEducation ? E.Education.label(u.highestEducation) : '',
+      occupation: u.occupation ? E.Occupation.label(u.occupation) : '',
+      heightCm: d.heightCm ?? null, bloodGroup: s(d.bloodGroup),
+      father: s(d.fatherName), mother: s(d.motherName),
+      dadaji: s(d.paternalGrandfatherName), dadiji: s(d.paternalGrandmotherName),
+      nanaji: s(d.maternalGrandfatherName), naniji: s(d.maternalGrandmotherName),
+      saakha: s(d.gotra), dadiSaakha: s(d.dadiSaakha), naniSaakha: s(d.naniSaakha), mamaSaakha: s(d.mamaSaakha),
+    };
+  }
+  async saveOnboarding(p: OnboardingProfile) {
+    const text = (v: string) => (v.trim() ? v.trim() : null);
+    await this.req('PUT', '/users/profile', {
+      fullName: [p.first, p.middle, p.last].map((x) => x.trim()).filter(Boolean).join(' '),
+      ...(p.dob ? { dateOfBirth: p.dob } : {}),
+      gender: E.Gender.value(p.gender),
+      maritalStatus: E.Marital.value(p.marital) || undefined,
+      sect: E.Sect.value(p.sect) || undefined,
+      subSect: E.SubSect.value(p.subSect) || null,
+      diet: E.Diet.value(p.diet) || undefined,
+      highestEducation: E.Education.value(p.education) || null,
+      occupation: E.Occupation.value(p.occupation) || null,
+      city: text(p.city),
+      state: text(p.state),
+    });
+    await this.req('PUT', '/users/profile/details', {
+      firstName: text(p.first),
+      middleName: text(p.middle),
+      lastName: text(p.last),
+      nativePlace: text(p.hometown),
+      ...(p.heightCm ? { heightCm: p.heightCm } : {}),
+      bloodGroup: text(p.bloodGroup),
+      fatherName: text(p.father),
+      motherName: text(p.mother),
+      paternalGrandfatherName: text(p.dadaji),
+      paternalGrandmotherName: text(p.dadiji),
+      maternalGrandfatherName: text(p.nanaji),
+      maternalGrandmotherName: text(p.naniji),
+      gotra: text(p.saakha),
+      dadiSaakha: text(p.dadiSaakha),
+      naniSaakha: text(p.naniSaakha),
+      mamaSaakha: text(p.mamaSaakha),
+    });
   }
   exportData() {
     return this.req<unknown>('GET', '/users/profile/export');

@@ -61,6 +61,12 @@
             "usesCleartextTraffic": true
           }
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "SoulSync uses your location once to fill in your city. Only the city and state are saved."
+        }
       ]
     ],
     "experiments": {

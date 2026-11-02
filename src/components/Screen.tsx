@@ -1,7 +1,7 @@
 import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
-import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Pressable, RefreshControl, ScrollView, View, type StyleProp, type ViewStyle } from 'react-native';
+import type { ReactNode, Ref } from 'react';
+import { KeyboardAvoidingView, Pressable, RefreshControl, ScrollView, View, type ScrollViewInstance, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAndroidKeyboardHeight } from '../lib/keyboard';
 import { alpha, isAndroid, isIOS, useTheme } from '../theme';
@@ -101,16 +101,19 @@ export function Header({ title = '', large, back, action, clear, onTitlePress }:
  * `fill` makes the body stretch so a bottom button can sit at the end (sign-in and onboarding layouts).
  */
 export function Screen({
-  header, aura, children, footer, overlay, scroll = true, fill, contentStyle, refreshing, onRefresh, tabRoot,
+  header, aura, children, footer, overlay, scroll = true, fill, contentStyle, refreshing, onRefresh, tabRoot, scrollRef,
 }: {
   header?: HeaderProps | false; aura?: boolean; children: ReactNode; footer?: ReactNode; overlay?: ReactNode; scroll?: boolean; fill?: boolean;
   contentStyle?: StyleProp<ViewStyle>; refreshing?: boolean; onRefresh?: () => void; tabRoot?: boolean;
+  /** Lets a screen scroll its content (e.g. back to the top between onboarding steps). */
+  scrollRef?: Ref<ScrollViewInstance>;
 }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const keyboard = useAndroidKeyboardHeight();
   const body = scroll ? (
     <ScrollView
+      ref={scrollRef}
       style={{ flex: 1 }}
       contentContainerStyle={[fill && { flexGrow: 1 }, { paddingBottom: footer || tabRoot ? 0 : insets.bottom }, contentStyle]}
       keyboardShouldPersistTaps="handled"

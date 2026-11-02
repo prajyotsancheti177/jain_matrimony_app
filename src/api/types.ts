@@ -158,6 +158,19 @@ export type ProfileForm = {
   pob: string;
 };
 
+/** Everything the onboarding steps collect. Empty string / null = not answered. */
+export type OnboardingProfile = {
+  first: string; middle: string; last: string;
+  gender: string; marital: string; dob: string | null;
+  city: string; state: string; hometown: string;
+  sect: string; subSect: string; diet: string;
+  education: string; occupation: string;
+  heightCm: number | null; bloodGroup: string;
+  father: string; mother: string; dadaji: string; dadiji: string; nanaji: string; naniji: string;
+  /** Own saakha (stored as gotra), then Daadiji's, Naaniji's and Maamaji's. */
+  saakha: string; dadiSaakha: string; naniSaakha: string; mamaSaakha: string;
+};
+
 export type BlockedPerson = PersonSummary & { since: string };
 
 /** A photo request this person sent to someone else. */
@@ -186,6 +199,9 @@ export interface Api {
   uploadPhoto(file: LocalFile, kind?: 'profile' | 'extra'): Promise<string>;
   getProfileForm(): Promise<ProfileForm>;
   saveProfileForm(f: ProfileForm): Promise<Me>;
+  /** Onboarding answers so far. Prefills a returning user who didn't finish. */
+  getOnboarding(): Promise<Partial<OnboardingProfile>>;
+  saveOnboarding(p: OnboardingProfile): Promise<void>;
   exportData(): Promise<unknown>;
   deleteAccount(): Promise<void>;
 

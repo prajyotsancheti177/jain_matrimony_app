@@ -1,26 +1,33 @@
 import { create } from 'zustand';
+import type { OnboardingProfile } from '../api/types';
 
-/** Answers collected across the two onboarding steps, saved together at the end. */
-export const useOnboarding = create<{
-  name: string;
-  gender: string;
-  dob: string | null;
-  marital: string;
-  sect: string;
-  subSect: string;
-  diet: string;
-  city: string;
-  state: string;
-  set: (p: Partial<{ name: string; gender: string; dob: string | null; marital: string; sect: string; subSect: string; diet: string; city: string; state: string }>) => void;
-}>((set) => ({
-  name: '',
+/** Answers collected across the onboarding steps. Saved after the required steps and again at the end. */
+export const useOnboarding = create<OnboardingProfile & { set: (p: Partial<OnboardingProfile>) => void }>((set) => ({
+  first: '',
+  middle: '',
+  last: '',
   gender: 'Man',
-  dob: null,
   marital: 'Never married',
+  dob: null,
+  city: '',
+  state: '',
+  hometown: '',
   sect: 'Murtipujak',
   subSect: 'Visa Oswal',
   diet: 'Strict Jain',
-  city: '',
-  state: '',
+  education: '',
+  occupation: '',
+  heightCm: null,
+  bloodGroup: '',
+  father: '',
+  mother: '',
+  dadaji: '',
+  dadiji: '',
+  nanaji: '',
+  naniji: '',
+  saakha: '',
+  dadiSaakha: '',
+  naniSaakha: '',
+  mamaSaakha: '',
   set: (p) => set(p),
 }));

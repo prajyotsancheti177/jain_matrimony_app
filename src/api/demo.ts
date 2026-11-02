@@ -4,7 +4,7 @@
 import { Asset } from 'expo-asset';
 import { completeness } from './completeness';
 import { ageFrom, firstName, initials } from './format';
-import type { Api, BlockedPerson, Conversation, Me, Message, PhotoRequest, Prefs, Profile, ProfileForm, ReceivedInterest, Score, SentInterest, SentPhotoRequest } from './types';
+import type { Api, BlockedPerson, Conversation, Me, Message, OnboardingProfile, PhotoRequest, Prefs, Profile, ProfileForm, ReceivedInterest, Score, SentInterest, SentPhotoRequest } from './types';
 
 const wait = (ms = 250) => new Promise((r) => setTimeout(r, ms));
 const asset = (m: number) => Asset.fromModule(m).uri;
@@ -131,6 +131,16 @@ export class DemoApi implements Api {
     this.form = structuredClone(f);
     this.me = { ...this.me, name: f.name, dob: f.dob, marital: f.marital, sect: f.sect, subSect: f.subSect, diet: f.diet, city: f.city, state: f.state };
     return this.getMe();
+  }
+  async getOnboarding(): Promise<Partial<OnboardingProfile>> {
+    await wait(100);
+    const [first = '', ...rest] = this.me.name.split(' ');
+    return { first, last: rest.pop() ?? '', middle: rest.join(' '), gender: this.me.gender || 'Man', dob: this.me.dob, city: this.me.city, state: this.me.state };
+  }
+  async saveOnboarding(p: OnboardingProfile) {
+    await wait(400);
+    const name = [p.first, p.middle, p.last].map((x) => x.trim()).filter(Boolean).join(' ');
+    this.me = { ...this.me, name, gender: p.gender, dob: p.dob, marital: p.marital, sect: p.sect, subSect: p.subSect, diet: p.diet, city: p.city, state: p.state };
   }
   async exportData() { await wait(); return { profile: this.me, preferences: this.prefs }; }
   async deleteAccount() { await wait(); }
