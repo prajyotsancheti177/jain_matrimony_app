@@ -10,6 +10,7 @@ const ICONS = [
   'format_quote', 'flag', 'block', 'notifications', 'download', 'download_done', 'delete', 'badge',
   'travel_explore', 'credit_card', 'how_to_vote', 'upload_file', 'task', 'shield_lock', 'hourglass_top',
   'add_a_photo', 'send', 'family_restroom', 'palette', 'logout', 'error', 'edit', 'person_off',
+  'keyboard_arrow_down', 'keyboard_arrow_up', 'self_improvement', 'account_tree', 'school', 'work', 'currency_rupee', 'location_on', 'diversity_1', 'restart_alt',
 ];
 const pathOf = (file) => {
   const svg = readFileSync(file, 'utf8');

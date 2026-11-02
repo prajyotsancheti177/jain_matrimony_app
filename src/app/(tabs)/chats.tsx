@@ -4,7 +4,6 @@ import { useCallback } from 'react';
 import { Pressable, View } from 'react-native';
 import { api } from '../../api';
 import { Avatar } from '../../components/Controls';
-import { Icon } from '../../components/Icon';
 import { Empty, Screen } from '../../components/Screen';
 import { T } from '../../components/Text';
 import { useQuery } from '../../lib/query';
@@ -18,10 +17,6 @@ export default function Chats() {
 
   return (
     <Screen aura tabRoot header={{ title: 'Chats', large: true, clear: true }} refreshing={q.loading && !!q.data} onRefresh={q.reload} contentStyle={{ paddingBottom: 24 }}>
-      <View style={{ marginHorizontal: 16, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Icon name="lock" size={17} color={t.mut} />
-        <T style={{ fontSize: 13.5, color: t.mut }}>Chats open after an interest is accepted.</T>
-      </View>
       {q.error && !q.data && <Empty icon="error" text={q.error.message} />}
       {q.data?.length === 0 && <Empty icon="forum" text="No chats yet. Accept an interest to start one." />}
       {q.data?.map((c) => (

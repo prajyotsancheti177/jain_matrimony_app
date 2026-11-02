@@ -27,8 +27,8 @@ export default function Welcome() {
   const scroll = useRef<ScrollViewInstance>(null);
   const [keyboard, setKeyboard] = useState(false);
 
-  // Keep the number field and Continue in view while the keyboard is open,
-  // and hide the mark then so it doesn't run into the greeting on the shorter screen.
+  // Keep the number field and Continue in view while the keyboard is open.
+  // The screen is shorter then, so the big mark gives way to a small one above the greeting.
   useEffect(() => {
     const show = Keyboard.addListener('keyboardDidShow', () => {
       setKeyboard(true);
@@ -80,14 +80,19 @@ export default function Welcome() {
       <StatusBar style="light" />
       <ScrollView ref={scroll} contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled" bounces={false}>
         {/* Jai Jinendra mark: thin outline hands over a soft gold glow */}
-        <View pointerEvents="none" style={{ position: 'absolute', top: insets.top + 24, alignSelf: 'center', width: 240, height: 320, opacity: keyboard ? 0 : 0.9, alignItems: 'center' }}>
+        {!keyboard && <View pointerEvents="none" style={{ position: 'absolute', top: insets.top + 24, alignSelf: 'center', width: 240, height: 320, opacity: 0.9, alignItems: 'center' }}>
           <View style={{ position: 'absolute', top: 147 - 140, width: 280, height: 280, borderRadius: 140, backgroundImage: `radial-gradient(circle, ${alpha(t.a, 0.38)}, transparent 68%)` }} />
           <View style={{ width: 240, height: 300, alignItems: 'center', justifyContent: 'center' }}>
             <FoldedHands size={230} color="#FFFFFF" />
           </View>
-        </View>
+        </View>}
 
-        <View style={{ flex: 1, minHeight: insets.top + 330, justifyContent: 'flex-end', paddingHorizontal: 26, paddingBottom: 28 }}>
+        <View style={{ flex: 1, minHeight: keyboard ? insets.top + 150 : insets.top + 330, justifyContent: 'flex-end', paddingHorizontal: 26, paddingBottom: keyboard ? 20 : 28 }}>
+          {keyboard && (
+            <View pointerEvents="none" style={{ alignSelf: 'center', marginBottom: 10, opacity: 0.9 }}>
+              <FoldedHands size={72} color="#FFFFFF" />
+            </View>
+          )}
           <D accessibilityRole="header" style={{ color: '#FFFFFF', fontSize: 40, lineHeight: 46, textAlign: 'center' }}>Jai Jinendra</D>
           <T style={{ color: mix('#FFFFFF', 86, t.p), fontSize: 16, marginTop: 6, textAlign: 'center' }}>Log in or create your profile.</T>
         </View>

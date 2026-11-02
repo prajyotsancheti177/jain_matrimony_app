@@ -74,3 +74,33 @@ export function formatPhone(raw: string) {
   const d = raw.replace(/\D/g, '').slice(0, 10);
   return d.length > 5 ? `${d.slice(0, 5)} ${d.slice(5)}` : d;
 }
+
+/** Bubble time: "9:38 AM". */
+export function clockTime(at: string | Date | null | undefined) {
+  if (!at) return '';
+  const d = new Date(at);
+  if (Number.isNaN(d.getTime())) return typeof at === 'string' ? at : '';
+  const h = d.getHours();
+  return `${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/** Chat day divider: "Today", "Yesterday", "Tuesday" (last week), "12 Oct", "12 Oct 2024". */
+export function dayLabel(at: string | Date | null | undefined) {
+  if (!at) return '';
+  const d = new Date(at);
+  if (Number.isNaN(d.getTime())) return '';
+  const now = new Date();
+  const days = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()) / 86400000);
+  if (days <= 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return DAY_NAMES[d.getDay()]!;
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}${d.getFullYear() !== now.getFullYear() ? ` ${d.getFullYear()}` : ''}`;
+}
+
+/** Local calendar-day key, for grouping. */
+export function dayKey(at: string | Date | null | undefined) {
+  const d = new Date(at ?? '');
+  return Number.isNaN(d.getTime()) ? '' : `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}

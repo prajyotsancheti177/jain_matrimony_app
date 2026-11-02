@@ -1,9 +1,9 @@
 // 2g · Matches feed.
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Image, Pressable, ScrollView, View } from 'react-native';
-import { api, type MatchFilter, type Profile } from '../../api';
-import { Avatar, Button, Chip } from '../../components/Controls';
+import { Image, Pressable, View } from 'react-native';
+import { api, type Profile } from '../../api';
+import { Avatar, Button } from '../../components/Controls';
 import { Icon } from '../../components/Icon';
 import { InterestSheet } from '../../components/InterestSheet';
 import { Empty, Screen } from '../../components/Screen';
@@ -12,26 +12,19 @@ import { D, T } from '../../components/Text';
 import { useQuery } from '../../lib/query';
 import { alpha, useTheme } from '../../theme';
 
-const FILTERS: MatchFilter[] = ['All', 'Verified', 'Strict Jain', 'Gujarat', 'Nearby'];
-
 export default function Matches() {
-  const [filter, setFilter] = useState<MatchFilter>('All');
   const [interestFor, setInterestFor] = useState<Profile | null>(null);
-  const q = useQuery(`matches:${filter}`, () => api.matches(filter));
+  const q = useQuery('matches:All', () => api.matches('All'));
   const sent = useQuery('interests:sent', () => api.sentInterests());
   const sentIds = new Set((sent.data ?? []).map((s) => s.to.id));
 
   return (
     <Screen aura tabRoot header={{ title: 'Matches', large: true, clear: true, action: { icon: 'tune', label: 'Preferences', onPress: () => router.push('/prefs') } }}
       refreshing={q.loading && !!q.data} onRefresh={q.reload} contentStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingTop: 2, paddingBottom: 14 }}>
-        {FILTERS.map((f) => <Chip key={f} label={f} on={filter === f} onPress={() => setFilter(f)} height={34} />)}
-      </ScrollView>
-
       {q.error && !q.data ? (
         <Empty icon="error" text={q.error.message} />
       ) : q.data && q.data.length === 0 ? (
-        <Empty icon="local_florist" text="No matches for this filter yet. Try another, or widen your preferences." />
+        <Empty icon="local_florist" text="No matches yet. Try widening your preferences." />
       ) : (
         <View style={{ gap: 18 }}>
           {(q.data ?? []).map((m) => (

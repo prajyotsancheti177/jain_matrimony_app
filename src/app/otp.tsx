@@ -23,6 +23,7 @@ export default function Otp() {
   const [otp, setOtp] = useState('');
   const [wait, setWait] = useState(30);
   const [busy, setBusy] = useState(false);
+  const [filled, setFilled] = useState(false); // true only when the app filled the code itself
   const input = useRef<ComponentRef<typeof TextInput>>(null);
 
   useEffect(() => {
@@ -33,7 +34,10 @@ export default function Otp() {
 
   const fromClipboard = useCallback(async () => {
     const code = findCode(await Clipboard.getStringAsync().catch(() => ''));
-    if (code) setOtp(code);
+    if (code) {
+      setOtp(code);
+      setFilled(true);
+    }
     return code;
   }, []);
 
@@ -41,17 +45,23 @@ export default function Otp() {
   useEffect(() => {
     if (!isAndroid) return;
     if (api.demo) {
-      const id = setTimeout(() => setOtp(DEMO_CODE), 1600);
+      const id = setTimeout(() => {
+        setOtp(DEMO_CODE);
+        setFilled(true);
+      }, 1600);
       return () => clearTimeout(id);
     }
     const sub = AppState.addEventListener('change', (s) => s === 'active' && fromClipboard());
     return () => sub.remove();
   }, [fromClipboard]);
-  const auto = otp.length === 6 ? 'Code filled from WhatsApp' : api.demo ? 'Reading the code from WhatsApp…' : 'Waiting for the code…';
+  const auto = otp.length === 6 ? (filled ? 'Code filled from WhatsApp' : null) : api.demo ? 'Reading the code from WhatsApp…' : 'Waiting for the code…';
 
   const paste = async () => {
     if (!(await fromClipboard())) {
-      if (api.demo) setOtp(DEMO_CODE);
+      if (api.demo) {
+        setOtp(DEMO_CODE);
+        setFilled(true);
+      }
       else toast('No 6-digit code on the clipboard', 'content_paste');
     }
   };
@@ -69,6 +79,7 @@ export default function Otp() {
     } catch (e) {
       toastError(e);
       setOtp('');
+      setFilled(false);
     } finally {
       setBusy(false);
     }
@@ -102,7 +113,10 @@ export default function Otp() {
       <TextInput
         ref={input}
         value={otp}
-        onChangeText={(v) => setOtp(v.replace(/\D/g, '').slice(0, 6))}
+        onChangeText={(v) => {
+          setOtp(v.replace(/\D/g, '').slice(0, 6));
+          setFilled(false);
+        }}
         keyboardType="number-pad"
         textContentType="oneTimeCode"
         autoComplete="sms-otp"
@@ -120,12 +134,12 @@ export default function Otp() {
             <T style={{ color: t.p, fontSize: 15, fontWeight: '600' }}>Paste</T>
           </Pressable>
         </View>
-      ) : (
+      ) : auto ? (
         <View style={{ marginTop: 20, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <Icon name={otp.length === 6 ? 'check_circle' : 'sync'} size={20} color={t.p} />
           <T style={{ fontSize: 14, color: t.mut }}>{auto}</T>
         </View>
-      )}
+      ) : null}
       {wait > 0 ? (
         <T style={{ marginTop: 14, fontSize: 14, color: t.mut }}>Resend in 0:{String(wait).padStart(2, '0')}</T>
       ) : (

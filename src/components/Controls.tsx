@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Animated, Image, Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { isAndroid, isIOS, mix, useTheme } from '../theme';
 import { Icon, type IconName } from './Icon';
 import { D, T } from './Text';
@@ -172,10 +173,25 @@ export function Radio({ on }: { on: boolean }) {
   );
 }
 
-/** Round avatar: photo if visible, otherwise initials on the aura gradient (or on surface). */
+/** Round avatar: photo if visible. Otherwise large sizes (≥72) get a soft head-and-shoulders
+ *  illustration in theme tints; small list avatars keep initials, which stay legible at 44–56px. */
 export function Avatar({ size, initials, photo, onSurface }: { size: number; initials: string; photo?: string | null; onSurface?: boolean }) {
   const t = useTheme();
   if (photo) return <Image source={{ uri: photo }} style={{ width: size, height: size, borderRadius: size / 2 }} />;
+  if (size >= 72) {
+    const bg = onSurface ? t.s : mix(t.p, 10, t.s);
+    const figure = mix(t.p, 22, t.s);
+    const ring = mix(t.p, 34, t.s);
+    return (
+      <View accessibilityRole="image" accessibilityLabel="No photo yet" style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden', backgroundColor: bg }}>
+        <Svg width={size} height={size} viewBox="0 0 100 100">
+          <Circle cx={50} cy={50} r={49} fill={bg} stroke={ring} strokeWidth={1.2} />
+          <Circle cx={50} cy={40} r={17} fill={figure} />
+          <Path d="M14 100 C16 76 31 63 50 63 C69 63 84 76 86 100 Z" fill={figure} />
+        </Svg>
+      </View>
+    );
+  }
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: onSurface ? t.s : undefined, backgroundImage: onSurface ? undefined : t.avatarBg }}>
       <D style={{ color: t.p, fontSize: size * 0.38, lineHeight: size * 0.5 }}>{initials}</D>

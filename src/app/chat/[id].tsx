@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { FlatList, KeyboardAvoidingView, Pressable, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, type Conversation, type Message } from '../../api';
+import { clockTime, dayKey, dayLabel } from '../../api/format';
 import { Header } from '../../components/Screen';
 import { Icon } from '../../components/Icon';
 import { useSafety } from '../../components/Safety';
@@ -72,20 +73,35 @@ export default function Chat() {
               <T style={{ color: t.p, fontSize: 12.5, fontWeight: '500' }}>You both said yes</T>
             </View>
           }
-          renderItem={({ item: m }) =>
-            m.mine ? (
-              <View style={{ alignSelf: 'flex-end', maxWidth: '78%', alignItems: 'flex-end', gap: 3 }}>
-                <View style={{ paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20, borderBottomRightRadius: 6, backgroundColor: t.p }}>
-                  <T style={{ color: t.op, fontSize: 15, lineHeight: 21 }}>{m.text}</T>
+          renderItem={({ item: m, index: i }) => {
+            const prev = data[i - 1];
+            const next = data[i + 1];
+            const newDay = !prev || dayKey(prev.at) !== dayKey(m.at);
+            const groupEnd = !next || next.mine !== m.mine || dayKey(next.at) !== dayKey(m.at) || Math.abs(new Date(next.at).getTime() - new Date(m.at).getTime()) > 5 * 60000;
+            const status = m.mine && m.id === lastMine?.id ? (m.id.startsWith('tmp-') ? 'Sending…' : m.read ? 'Read' : 'Delivered') : null;
+            const meta = groupEnd ? [clockTime(m.at), status].filter(Boolean).join(' · ') : status;
+            return (
+              <View>
+                {newDay && dayLabel(m.at) !== '' && (
+                  <View style={{ alignSelf: 'center', paddingHorizontal: 10, height: 22, justifyContent: 'center', borderRadius: 11, backgroundColor: t.s, marginTop: i === 0 ? 0 : 10, marginBottom: 6 }}>
+                    <T style={{ fontSize: 11.5, fontWeight: '500', color: t.mut }}>{dayLabel(m.at)}</T>
+                  </View>
+                )}
+                <View style={{ alignSelf: m.mine ? 'flex-end' : 'flex-start', maxWidth: '78%', alignItems: m.mine ? 'flex-end' : 'flex-start', gap: 3, marginBottom: meta ? 4 : 0 }}>
+                  {m.mine ? (
+                    <View style={{ paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20, borderBottomRightRadius: 6, backgroundColor: t.p }}>
+                      <T style={{ color: t.op, fontSize: 15, lineHeight: 21 }}>{m.text}</T>
+                    </View>
+                  ) : (
+                    <View style={{ paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20, borderBottomLeftRadius: 6, backgroundColor: t.s, boxShadow: '0px 2px 6px -3px rgba(0,0,0,0.12)' }}>
+                      <T style={{ fontSize: 15, lineHeight: 21 }}>{m.text}</T>
+                    </View>
+                  )}
+                  {!!meta && <T style={{ fontSize: 11.5, color: t.mut, paddingHorizontal: 4 }}>{meta}</T>}
                 </View>
-                {m.id === lastMine?.id && <T style={{ fontSize: 12, color: t.mut }}>{m.id.startsWith('tmp-') ? 'Sending…' : m.read ? 'Read' : 'Delivered'}</T>}
               </View>
-            ) : (
-              <View style={{ alignSelf: 'flex-start', maxWidth: '78%', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 20, borderBottomLeftRadius: 6, backgroundColor: t.s, boxShadow: '0px 2px 6px -3px rgba(0,0,0,0.12)' }}>
-                <T style={{ fontSize: 15, lineHeight: 21 }}>{m.text}</T>
-              </View>
-            )
-          }
+            );
+          }}
         />
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', paddingVertical: 8, paddingHorizontal: 12, paddingBottom: 8 + insets.bottom, backgroundColor: t.bg, borderTopWidth: 0.5, borderColor: t.line }}>
           {conv && !conv.active ? (

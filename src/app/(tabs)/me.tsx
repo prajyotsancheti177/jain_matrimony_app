@@ -150,6 +150,22 @@ export default function MeScreen() {
             </View>
           </Pressable>
 
+          {!m.profilePhoto && (
+            <View style={{ marginTop: 14, padding: 16, borderRadius: 20, backgroundColor: t.soft, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: t.s, alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="add_a_photo" size={22} color={t.p} />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <T style={{ fontSize: 15, fontWeight: '600' }}>Add a photo to get 3× more interests</T>
+                <T style={{ fontSize: 12.5, lineHeight: 17, color: t.mut, marginTop: 2 }}>Profiles with a photo get noticed first.</T>
+              </View>
+              <Pressable onPress={() => addPhoto('profile')} disabled={!!uploading} accessibilityRole="button" accessibilityLabel="Add a profile photo"
+                style={({ pressed }) => ({ height: 36, paddingHorizontal: 14, borderRadius: t.chipR, backgroundColor: t.p, justifyContent: 'center', opacity: pressed ? 0.8 : 1 })}>
+                {uploading === 'profile' ? <ActivityIndicator color={t.op} /> : <T style={{ color: t.op, fontSize: 14, fontWeight: '600' }}>Add photo</T>}
+              </Pressable>
+            </View>
+          )}
+
           <View style={{ marginTop: 14, padding: 12, borderRadius: 20, backgroundColor: t.card, boxShadow: t.cardShadow }}>
             {/* Profile photo: public */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
